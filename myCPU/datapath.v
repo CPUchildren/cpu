@@ -193,7 +193,7 @@ flopenrc DFF_data_ram_wdataM(clk,rst,clear,ena,sel_rd2E,data_ram_wdataM);
 flopenrc #(5) DFF_reg_waddrM(clk,rst,clear,ena,reg_waddrE,reg_waddrM);
 // flopenrc #(1) DFF_zeroM(clk,rst,clear,ena,zero,zeroM);  ==> 控制冒险，已将分支指令提前到Decode阶段
 flopenrc DFF_instrM(clk,rst,clear,ena,instrE,instrM);
-flopenrc DFF_aluout_64M(clk,rst,clear,ena,aluout_64E,aluout_64M);
+flopenrc #(64) DFF_aluout_64M(clk,rst,clear,ena,aluout_64E,aluout_64M);
 
 // BUG hilo
 //flopenrc DFF_hiM(clk,rst,1'b0,1'b1,hi_E,hi_M);

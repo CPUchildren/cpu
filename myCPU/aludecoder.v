@@ -41,6 +41,11 @@ module alu_dec (
                     `FUN_SRLV  : aluopD <= `ALUOP_SRLV  ;
                     `FUN_SRA   : aluopD <= `ALUOP_SRA   ;
                     `FUN_SRAV  : aluopD <= `ALUOP_SRAV  ;
+                    // 数据移动指令
+                    `FUN_MFHI  : aluopD <= `ALUOP_MFHI  ;
+                    `FUN_MFLO  : aluopD <= `ALUOP_MFLO  ;
+                    `FUN_MTHI  : aluopD <= `ALUOP_MTHI  ;
+                    `FUN_MTLO  : aluopD <= `ALUOP_MTLO  ;
                     default: aluopD <= 8'b00000000;
                 endcase
             //逻辑指令

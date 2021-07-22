@@ -31,6 +31,7 @@ module hilo_reg(
 	output reg[63:0] hilo  // hilo current data
     );
 	
+	// 注意，要相对具体传入的clk判断，比如这次传入的是~clk
 	always @(negedge clk) begin
 		if(rst) begin
 			// hi_o <= `ZeroWord;
