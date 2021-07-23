@@ -1,13 +1,16 @@
+`include "defines.vh"
 module lsmem (
     input wire[5:0]opM,
-    input wire[31:0]sel_rd2M,
+    input wire[31:0]sel_rd2M, // writedata_4B
+    input wire[31:0]alu_resM,
     input wire[31:0]data_sram_rdataM,
 
-    output wire[3:0]data_sram_wenM,
-    output wire[31:0]data_sram_wdataM,
-    output wire[31:0]read_dataM
+    output reg [3:0]data_sram_wenM,
+    output reg [31:0]data_sram_wdataM,
+    output reg [31:0]read_dataM
 );
     
+// TODO 看看能不能转换为assign语句
 always @(*) begin
     case(opM)
         `OP_LW,`OP_LB,`OP_LBU,`OP_LH,`OP_LHU: data_sram_wenM <= 4'b0000;

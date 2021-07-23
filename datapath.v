@@ -21,7 +21,7 @@ wire stallD,flushD,forwardAD,forwardBD;
 wire pcsrcD,equalD,branchD,jumpD,jrD;
 wire [4:0]rtD,rdD,rsD,saD;
 wire [31:0]pc_nowD,pc_plus4D,pc_branchD,rd1D,rd2D,rd1D_branch,rd2D_branch;
-wire [31:0]instrD_sl2,sign_immD,sign_immD_sl2;
+wire [31:0]instrD,instrD_sl2,sign_immD,sign_immD_sl2;
 // E
 wire flushE,regdstE,alusrcAE,alusrcBE,regwriteE,memtoRegE;
 wire [1:0]forwardAE,forwardBE;
@@ -32,8 +32,7 @@ wire [31:0]pc_nowE,alu_resE,aluout_64E,sel_rd1E,sel_rd2E,sel_rd2M;
 // M
 wire memtoRegM,regwriteM,memWriteM;
 wire [4:0]reg_waddrM;
-wire [31:0]instrM,pc_nowM,alu_resM,aluout_64M;
-reg  [31:0]read_dataM;
+wire [31:0]instrM,pc_nowM,alu_resM,aluout_64M,read_dataM;
 // W
 wire memtoRegW,regwriteW;
 wire [4:0]reg_waddrW;
@@ -210,8 +209,10 @@ assign data_sram_waddr = alu_resM;
 // 访存设置
 lsmem lsmen(
     .opM(instrM[31:26]),
-    .sel_rd2M(sel_rd2M),
+    .sel_rd2M(sel_rd2M), // writedata_4B
+    .alu_resM(alu_resM),
     .data_sram_rdataM(data_sram_rdataM),
+
 
     .data_sram_wenM(data_sram_wenM),
     .data_sram_wdataM(data_sram_wdataM),
