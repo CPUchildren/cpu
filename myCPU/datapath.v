@@ -26,6 +26,10 @@ wire regwriteW,regdstE,alusrcAE,alusrcBE,branchD,memWriteM,memtoRegW,jumpD;
 wire regwriteE,regwriteM,memtoRegE,memtoRegM;
 wire [7:0]alucontrolE;
 
+wire div_ready,start_div,signed_div,stall_divE;
+wire hilo_in_signal;
+wire [63:0] hilo_i,div_result,div_resultM;
+wire stallE;
 // BUG 是不是写复杂了
 // // 数据移动指令 HILO 相关定义
 // wire [31:0]HI,LO;     // 定义hi和lo寄存器最新的值。
@@ -76,7 +80,7 @@ adder adder(
 // ====================================== Decoder ======================================
 // 注意：这里要不要flushD都没问题，因为跳转指令后面都是一个nop，所以没关系
 flopenrc DFF_instrD(clk,rst,flushD,~stallD,instrF,instrD);
-flopenrc DFF_pc_plus4D(clk,rst,clear,~stallD,pc_plus4F,pc_plus4D);
+flopenrc DFF_pc_plus4D(clk,rst,flushD,~stallD,pc_plus4F,pc_plus4D);
 
 
 main_dec main_dec(
@@ -155,15 +159,14 @@ assign equalD = (rd1D_branch == rd2D_branch) ? 1:0;
 assign pcsrcD = equalD & branchD;
 
 // ====================================== Execute ======================================
-
-flopenrc #(32) DFF_rd1E(clk,rst,flushE,ena,rd1D,rd1E);
-flopenrc #(32) DFF_rd2E(clk,rst,flushE,ena,rd2D,rd2E);
-flopenrc #(32) DFF_sign_immE(clk,rst,flushE,ena,sign_immD,sign_immE);
-flopenrc #(5) DFF_rtE(clk,rst,flushE,ena,rtD,rtE);
-flopenrc #(5) DFF_rdE(clk,rst,flushE,ena,rdD,rdE);
-flopenrc #(5) DFF_rsE(clk,rst,flushE,ena,rsD,rsE);
-flopenrc #(5) DFF_saE(clk,rst,flushE,ena,saD,saE);
-flopenrc DFF_instrE(clk,rst,flushD,ena,instrD,instrE);
+flopenrc #(32) DFF_rd1E(clk,rst,flushE,~stallE,rd1D,rd1E);
+flopenrc #(32) DFF_rd2E(clk,rst,flushE,~stallE,rd2D,rd2E);
+flopenrc #(32) DFF_sign_immE(clk,rst,flushE,~stallE,sign_immD,sign_immE);
+flopenrc #(5) DFF_rtE(clk,rst,flushE,~stallE,rtD,rtE);
+flopenrc #(5) DFF_rdE(clk,rst,flushE,~stallE,rdD,rdE);
+flopenrc #(5) DFF_rsE(clk,rst,flushE,~stallE,rsD,rsE);
+flopenrc #(5) DFF_saE(clk,rst,flushE,~stallE,saD,saE);
+flopenrc DFF_instrE(clk,rst,flushE,~stallE,instrD,instrE);
 
 mux2 #(5) mux2_regDst(.a(rtE),.b(rdE),.sel(regdstE),.y(reg_waddrE));
 
@@ -180,11 +183,31 @@ alu alu(
     .b(srcB),
     .aluop(alucontrolE),
     .hilo(hilo),
-
+    .div_ready(div_ready), 
+    
+    .start_div(start_div),
+    .signed_div(signed_div),
+    .stall_div(stall_divE),
     .y(alu_resE),
     .aluout_64(aluout_64E),
     .overflow(),
     .zero() // wire zero ==> branch跳转控制（已经升级到*控制冒险*）
+);
+
+// TODO 为啥div要放在datapath里面
+assign hilo_in_signal=((alucontrolE ==`ALUOP_DIV) | (alucontrolE ==`ALUOP_DIVU))? 1:0;
+mux2 #(64) mux2_hiloin(.a(aluout_64M),.b(div_resultM),.sel(hilo_in_signal),.y(hilo_i));
+
+div mydiv(
+	.clk(clk),
+	.rst(rst),
+	.signed_div_i(signed_div), 
+	.opdata1_i(sel_rd1E),
+	.opdata2_i(srcB),
+	.start_i(start_div),
+	.annul_i(1'b0),
+	.result_o(div_result),
+	.ready_o(div_ready)
 );
 
 // ====================================== Memory ======================================
@@ -205,7 +228,7 @@ flopenrc #(64) DFF_aluout_64M(clk,rst,clear,ena,aluout_64E,aluout_64M);
 // TODO M阶段写回hilo
 hilo_reg hilo_reg(
 	.clk(clk),.rst(rst),.we(hilowriteM),
-	.hilo_i(aluout_64M),
+	.hilo_i(hilo_i),
 	// .hilo_res(hilo_res)
 	.hilo(hilo)  // hilo current data
     );
@@ -345,9 +368,9 @@ mux2 mux2_memtoReg(.a(alu_resW),.b(data_ram_rdataW),.sel(memtoRegW),.y(wd3W));
 
 // ******************* 冒险信号总控制 *****************
 hazard hazard(
-    regwriteE,regwriteM,regwriteW,memtoRegE,memtoRegM,branchD,
+    regwriteE,regwriteM,regwriteW,memtoRegE,memtoRegM,branchD,jrD,stall_divE,
     rsD,rtD,rsE,rtE,reg_waddrM,reg_waddrW,reg_waddrE,
-    stallF,stallD,flushE,forwardAD,forwardBD,
+    stallF,stallD,stallE,flushE,forwardAD,forwardBD,
     forwardAE, forwardBE
 );
 

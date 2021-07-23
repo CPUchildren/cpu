@@ -34,6 +34,10 @@ module alu_dec (
                     `FUN_ADDU  : aluopD <= `ALUOP_ADDU  ;
                     `FUN_SUB   : aluopD <= `ALUOP_SUB   ;
                     `FUN_SUBU  : aluopD <= `ALUOP_SUBU  ;
+                    `FUN_MULT  : aluopD <= `ALUOP_MULT  ;
+                    `FUN_MULTU : aluopD <= `ALUOP_MULTU ;
+                    `FUN_DIV   : aluopD <= `ALUOP_DIV  ;
+                    `FUN_DIVU  : aluopD <= `ALUOP_DIVU  ;
                     //移位指令
                     `FUN_SLL   : aluopD <= `ALUOP_SLL   ;
                     `FUN_SLLV  : aluopD <= `ALUOP_SLLV  ;

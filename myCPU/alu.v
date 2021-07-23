@@ -8,15 +8,22 @@ module alu(
     input  wire [31:0]b,
     input  wire [7:0]aluop,
     input  wire  [63:0]hilo, // hilo source data
-
+    input wire div_ready, 
+    output reg start_div,signed_div,stall_div,
     output reg [31:0]y,
     output reg [63:0]aluout_64,
     output wire overflow,
     output wire zero
     );
-    
+
+    wire [31:0] multa,multb;
+    //multiply module
+    assign multa = ((aluop == `ALUOP_MULT) && (a[31] == 1'b1))? (~a + 1) : a;
+    assign multb = ((aluop == `ALUOP_MULT) && (b[31] == 1'b1))? (~b + 1) : b;    
     assign zero = (y == 32'b0);
+
     always @(*) begin
+        stall_div<= 1'b0;
         case (aluop)
             //算术指令
             `ALUOP_ADD   : y <= a + b;
@@ -30,7 +37,38 @@ module alu(
             `ALUOP_SLTU  : y <= a < b;
             `ALUOP_SLTI  : y <= a < b;
             `ALUOP_SLTIU : y <= a < b;
-            
+            `ALUOP_MULT  : aluout_64 <= (a[31]^b[31]==1'b1)? ~(multa * multb) + 1 :  multa * multb; 
+            `ALUOP_MULTU : aluout_64 <= a * b;
+            `ALUOP_DIV   :begin
+                if(div_ready ==1'b0) begin
+                    start_div <= 1'b1;
+                    signed_div <=1'b1;
+                    stall_div <=1'b1;
+                end else if (div_ready == 1'b1) begin
+                    start_div <= 1'b0;
+                    signed_div <=1'b1;
+                    stall_div <=1'b0;
+                end else begin
+                    start_div <= 1'b0;
+                    signed_div <=1'b0;
+                    stall_div <=1'b0;
+                end
+            end
+            `ALUOP_DIVU :begin
+                if(div_ready ==1'b0) begin
+                    start_div <= 1'b1;
+                    signed_div <=1'b0;
+                    stall_div <=1'b1;
+                end else if (div_ready == 1'b1) begin
+                    start_div <= 1'b0;
+                    signed_div <=1'b0;
+                    stall_div <=1'b0;
+                end else begin
+                    start_div <= 1'b0;
+                    signed_div <=1'b0;
+                    stall_div <=1'b0;
+                end
+            end
             //逻辑指令
             `ALUOP_AND   : y <= a & b;
             `ALUOP_OR    : y <= a | b;

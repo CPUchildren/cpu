@@ -1,8 +1,8 @@
 `timescale 1ns/1ps
 module hazard (
-    input wire regwriteE,regwriteM,regwriteW,memtoRegE,memtoRegM,branchD,jrD,
+    input wire regwriteE,regwriteM,regwriteW,memtoRegE,memtoRegM,branchD,jrD,stall_divE,
     input wire [4:0]rsD,rtD,rsE,rtE,reg_waddrM,reg_waddrW,reg_waddrE,
-    output wire stallF,stallD,flushE,forwardAD,forwardBD,
+    output wire stallF,stallD,stallE,flushE,forwardAD,forwardBD,
     output wire[1:0] forwardAE, forwardBE
 );
     
@@ -29,7 +29,8 @@ module hazard (
     assign jr_stall =(jrD & regwriteE & ((rsD == reg_waddrE)|(rtD == reg_waddrE))) | // 执行阶段阻塞，前面有写入的数据
                     (jrD & memtoRegM & ((rsD == reg_waddrM)|(rtD == reg_waddrM))); // 写回阶段阻塞
 
-    assign stallF = lwstall | branch_stall | jr_stall;
-    assign stallD = lwstall | branch_stall | jr_stall;
+    assign stallF = lwstall | branch_stall | jr_stall | stall_divE;
+    assign stallD = lwstall | branch_stall | jr_stall | stall_divE;;
     assign flushE = lwstall | branch_stall | jr_stall;
+    assign stallE = stall_divE;
 endmodule
