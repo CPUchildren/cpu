@@ -17,28 +17,28 @@ wire div_ready,start_div,signed_div,stall_divE,hilo_in_signal;
 
 // F
 wire stallF;
-wire [31:0]pc_plus4F,pc_next,pc_next_jump;
+wire [31:0]pc_plus4F,pc_next,pc_next_jump,pc_next_jr,pc_next_j;
 // D
 wire stallD,flushD,forwardAD,forwardBD;
-wire pcsrcD,equalD,branchD,jumpD,jrD;
+wire pcsrcD,equalD,branchD,jumpD,jrD,balD,jalD;
 wire [4:0]rtD,rdD,rsD,saD;
 wire [31:0]pc_nowD,pc_plus4D,pc_branchD,rd1D,rd2D,rd1D_branch,rd2D_branch;
 wire [31:0]instrD,instrD_sl2,sign_immD,sign_immD_sl2;
 // E
-wire flushE,stallE,regdstE,alusrcAE,alusrcBE,regwriteE,memtoRegE;
+wire flushE,stallE,regdstE,alusrcAE,alusrcBE,regwriteE,memtoRegE,jrE,balE,jalE;
 wire [1:0]forwardAE,forwardBE;
-wire [4:0]rtE,rdE,rsE,saE,rd1_saE,reg_waddrE;
+wire [4:0]rtE,rdE,rsE,saE,reg_waddrE;
 wire [7:0]alucontrolE;
-wire [31:0]instrE,rd1E,rd2E,srcB,sign_immE;
-wire [31:0]pc_nowE,alu_resE,aluout_64E,sel_rd1E,sel_rd2E,sel_rd2M;
-wire [63:0]div_result;
+wire [31:0]instrE,rd1E,rd2E,srcB,sign_immE,pc_plus4E,pc_plus8E,rd1_saE;
+wire [31:0]pc_nowE,alu_resE,sel_rd1E,sel_rd2E,alu_resE_real;
+wire [63:0]div_result,aluout_64E;
 // M
 wire memtoRegM,regwriteM,memWriteM;
 wire [4:0]reg_waddrM;
-wire [31:0]instrM,pc_nowM,alu_resM,aluout_64M,read_dataM;
-wire [63:0]div_resultM;
+wire [31:0]instrM,pc_nowM,alu_resM,read_dataM,sel_rd2M;
+wire [63:0]div_resultM,aluout_64M;
 // W
-wire memtoRegW,regwriteW;
+wire memtoRegW,regwriteW,balW,jalW;
 wire [4:0]reg_waddrW;
 wire [31:0]pc_nowW, alu_resW, wd3W, data_sram_rdataW;
 
@@ -75,9 +75,10 @@ adder adder(
 );
 
 // ====================================== Decoder ======================================
-// 注意：这里要不要flushD都没问题，因为跳转指令后面都是一个nop，所以没关系
-flopenrc DFF_instrD(clk,rst,flushD,~stallD,instrF,instrD);
-flopenrc DFF_pc_plus4D(clk,rst,flushD,~stallD,pc_plus4F,pc_plus4D);
+// 延迟槽继续执行，不清空
+flopenrc DFF_instrD   (clk,rst,clear,~stallD,instrF,instrD);
+flopenrc DFF_pc_nowD  (clk,rst,clear,~stallD,pc_now,pc_nowD);
+flopenrc DFF_pc_plus4D(clk,rst,clear,~stallD,pc_plus4F,pc_plus4D);
 
 
 main_dec main_dec(
@@ -106,8 +107,7 @@ main_dec main_dec(
     .jalE(jalE),
     .jalW(jalW),
     .jrD(jrD),
-    .jrE(jrE),
-    .jrW(jrW)
+    .jrE(jrE)
 );
 
 alu_dec alu_decoder(
@@ -174,16 +174,16 @@ eqcmp pc_predict(
 assign pcsrcD = equalD & (branchD|balD);
 
 // ====================================== Execute ======================================
-flopenrc #(32) DFF_rd1E(clk,rst,flushE,~stallE,rd1D,rd1E);
-flopenrc #(32) DFF_rd2E(clk,rst,flushE,~stallE,rd2D,rd2E);
+flopenrc #(32) DFF_rd1E     (clk,rst,flushE,~stallE,rd1D,rd1E);
+flopenrc #(32) DFF_rd2E     (clk,rst,flushE,~stallE,rd2D,rd2E);
 flopenrc #(32) DFF_sign_immE(clk,rst,flushE,~stallE,sign_immD,sign_immE);
-flopenrc #(5) DFF_rtE(clk,rst,flushE,~stallE,rtD,rtE);
-flopenrc #(5) DFF_rdE(clk,rst,flushE,~stallE,rdD,rdE);
-flopenrc #(5) DFF_rsE(clk,rst,flushE,~stallE,rsD,rsE);
-flopenrc #(5) DFF_saE(clk,rst,flushE,~stallE,saD,saE);
-flopenrc DFF_instrE(clk,rst,flushE,~stallE,instrD,instrE);
-flopenrc DFF_pc_plus4E(clk,rst,flushE,ena,pc_plus4D,pc_plus4E);
-mux2 #(5) mux2_regDst(.a(rtE),.b(rdE),.sel(regdstE),.y(reg_waddrE));
+flopenrc #(5) DFF_rtE       (clk,rst,flushE,~stallE,rtD,rtE);
+flopenrc #(5) DFF_rdE       (clk,rst,flushE,~stallE,rdD,rdE);
+flopenrc #(5) DFF_rsE       (clk,rst,flushE,~stallE,rsD,rsE);
+flopenrc #(5) DFF_saE       (clk,rst,flushE,~stallE,saD,saE);
+flopenrc DFF_instrE         (clk,rst,flushE,~stallE,instrD,instrE);
+flopenrc DFF_pc_nowE        (clk,rst,flushE,~stallE,pc_nowD,pc_nowE);
+flopenrc DFF_pc_plus4E      (clk,rst,flushE,~stallE,pc_plus4D,pc_plus4E);
 
 // link指令对寄存器的选择
 mux3 #(5) mux3_regDst(
@@ -258,7 +258,7 @@ flopenrc DFF_sel_rd2M         (clk,rst,clear,ena,sel_rd2E,sel_rd2M);
 flopenrc #(5) DFF_reg_waddrM  (clk,rst,clear,ena,reg_waddrE,reg_waddrM);
 flopenrc DFF_instrM           (clk,rst,clear,ena,instrE,instrM);
 flopenrc #(64) DFF_aluout_64M (clk,rst,clear,ena,aluout_64E,aluout_64M);
-
+flopenrc DFF_pc_nowM          (clk,rst,clear,ena,pc_nowE,pc_nowM);
 
 // ******************* wys：数据移动相关指令 *****************
 // M阶段写回hilo
@@ -287,6 +287,7 @@ lsmem lsmen(
 flopenrc DFF_alu_resW         (clk,rst,clear,ena,alu_resM,alu_resW);
 flopenrc DFF_data_sram_rdataW (clk,rst,clear,ena,read_dataM,data_sram_rdataW);
 flopenrc #(5) DFF_reg_waddrW  (clk,rst,clear,ena,reg_waddrM,reg_waddrW);
+flopenrc DFF_pc_nowW          (clk,rst,clear,ena,pc_nowM,pc_nowW);
 
 
 mux2 mux2_memtoReg(.a(alu_resW),.b(data_sram_rdataW),.sel(memtoRegW),.y(wd3W));

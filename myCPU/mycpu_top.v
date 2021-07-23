@@ -17,7 +17,8 @@ module mycpu_top(
 );
 
     // 一个例子
-	wire memwrite;
+	// wire memwrite;
+    wire [31:0]instr;
     
     datapath datapath(
 		.clk(clk),
@@ -37,7 +38,7 @@ module mycpu_top(
     assign inst_sram_wen = 4'b0;
     assign inst_sram_wdata = 32'b0;
     // assign inst_sram_addr = pc;
-    // assign instr = inst_sram_rdata;
+    assign instr = inst_sram_rdata;
 
     assign data_sram_en = 1'b1;     //如果有data_en，就用data_en
     // assign data_sram_wen = {4{memwrite}};
