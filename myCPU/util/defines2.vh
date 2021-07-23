@@ -1,3 +1,4 @@
+// 仅用于instdec标注
 // global macro definition
 `define RstEnable 		1'b1
 `define RstDisable		1'b0

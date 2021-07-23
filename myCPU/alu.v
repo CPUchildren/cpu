@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-`include "instrdefines.vh"
+`include "defines.vh"
 // Module Name: alu
 // Description: alu基本运算
 

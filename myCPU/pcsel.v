@@ -1,2 +1,0 @@
-// PC selector
-// 1

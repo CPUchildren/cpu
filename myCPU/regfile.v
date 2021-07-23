@@ -30,8 +30,6 @@ module regfile(
 
 	reg [31:0] rf[31:0];
 
-	// ??? ==>????writeback?
-	// ??? ==>??????writeback?
 	always @(negedge clk) begin
 		if(we3) begin
 			rf[wa3] <= wd3;
@@ -41,8 +39,4 @@ module regfile(
 	assign rd1 = (ra1 != 0) ? rf[ra1] : 0;
 	assign rd2 = (ra2 != 0) ? rf[ra2] : 0;
 
-	// // BUG test
-	// always @(clk) begin
-	//    $display("rf[2]:%h, rf[5]:%h, rf[7]:%h, rf[8]:%h",rf[2],rf[5],rf[7],rf[8]);
-	// end
 endmodule

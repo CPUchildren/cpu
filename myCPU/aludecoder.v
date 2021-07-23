@@ -1,4 +1,4 @@
-`include "instrdefines.vh"
+`include "defines.vh"
 module alu_dec (
     input wire clk, rst,
     input wire [31:0]instrD,

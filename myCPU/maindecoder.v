@@ -45,42 +45,22 @@ module main_dec(
     assign ena = 1'b1;
 
     // signsD = {11hilowrite,10bal,9jr,8jal,7alusrcA,6regwrite,5regdst,,4alusrcB,3branch,2memWrite,1memtoReg,0jump}
-    // XXX 分支跳转指令增加了bal,jr,jal信号(可以统一之后加000)
     always @(*) begin
         case(op)
             `OP_R_TYPE:
                 case (funct)
                     //移位指令
                     `FUN_SLL   : signsD <= 12'b000011100000 ;
-                    `FUN_SLLV  : signsD <= 12'b000001100000 ;
                     `FUN_SRL   : signsD <= 12'b000011100000 ;
-                    `FUN_SRLV  : signsD <= 12'b000001100000 ;
                     `FUN_SRA   : signsD <= 12'b000011100000 ;
-                    `FUN_SRAV  : signsD <= 12'b000001100000 ;
-                    //逻辑和算术指令
-                    `FUN_AND   : signsD <= 12'b000001100000;    //and
-                    `FUN_OR    : signsD <= 12'b000001100000;    //or
-                    `FUN_XOR   : signsD <= 12'b000001100000;   //xor
-                    `FUN_NOR   : signsD <= 12'b000001100000;   //nor
-                    `FUN_SLT   : signsD <= 12'b000001100000;   //slt
-                    `FUN_SLTU  : signsD <= 12'b000001100000;   //sltu
-                    `FUN_ADD   : signsD <= 12'b000001100000;   //add
-                    `FUN_ADDU  : signsD <= 12'b000001100000;   //addu
-                    `FUN_SUB   : signsD <= 12'b000001100000;   //sub
-                    `FUN_SUBU  : signsD <= 12'b000001100000;   //subu
-                    `FUN_MULT  : signsD <= 12'b000001100000;   //mult
-                    `FUN_MULTU : signsD <= 12'b000001100000;  //multu
-                    `FUN_DIV   : signsD <= 12'b000001100000;   //div
-                    `FUN_DIVU  : signsD <= 12'b000001100000;   //divu
+                    //逻辑和算术指令 default
                     // 分支跳转
                     `FUN_JR    : signsD <= 12'b001000000001;
                     `FUN_JALR  : signsD <= 12'b001001100000;
                     //数据移动指令
-                    `FUN_MFHI  : signsD <= 12'b000001100000;
-                    `FUN_MFLO  : signsD <= 12'b000001100000;
                     `FUN_MTHI  : signsD <= 12'b100000000000;
                     `FUN_MTLO  : signsD <= 12'b100000000000;
-                    // TODO 简化，r-type默认格式如下，可以简化上述指令类型
+                    //简化，r-type默认控制信号
                     default: signsD <= 12'b000001100000;
                 endcase
             // 访存指令

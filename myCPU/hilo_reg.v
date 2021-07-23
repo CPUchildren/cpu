@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-`include "instrdefines.vh"
+`include "defines.vh"
 //////////////////////////////////////////////////////////////////////////////////
 // Company: 
 // Engineer: 
@@ -26,12 +26,11 @@ module hilo_reg(
 	// input wire[31:0] hi,lo,
 	input wire[63:0] hilo_i,
 	
-	// TODO 为啥感觉具体的hilo操作直接在alu里面进行了
+	// 具体的hilo操作直接在alu里面进行了
 	// output reg[31:0] hilo_res,
 	output reg[63:0] hilo  // hilo current data
     );
 	
-	// 注意，要相对具体传入的clk判断，比如这次传入的是~clk
 	always @(negedge clk) begin
 		if(rst) begin
 			// hi_o <= `ZeroWord;
