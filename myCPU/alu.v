@@ -18,8 +18,8 @@ module alu(
 
     wire [31:0] multa,multb;
     //multiply module
-    assign multa = ((aluop == `ALUOP_MULT) && (a[31] == 1'b1))? (~a + 1) : a;
-    assign multb = ((aluop == `ALUOP_MULT) && (b[31] == 1'b1))? (~b + 1) : b;    
+    assign multa = (aluop == `ALUOP_MULT) && (a[31] == 1'b1) ? (~a + 1) : a;
+    assign multb = (aluop == `ALUOP_MULT) && (b[31] == 1'b1) ? (~b + 1) : b;
     assign zero = (y == 32'b0);
 
     always @(*) begin

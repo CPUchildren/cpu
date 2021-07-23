@@ -1,10 +1,11 @@
 `timescale 1ns/1ps
 `include "defines.vh"
 module main_dec(
-    input wire clk,rst,
+    input wire clk,rst,flushE,
     input wire [31:0]instrD,
-    output wire regwriteW,regdstE,alusrcAE,alusrcBE,branchD,memWriteM,memtoRegW,jumpD,
-    output wire regwriteE,regwriteM,memtoRegE,memtoRegM,hilowriteM
+    output wire regwriteW,regdstE,alusrcAE,alusrcBE,branchD,memWriteM,memtoRegW,
+    output wire regwriteE,regwriteM,memtoRegE,memtoRegM,hilowriteM,
+    output wire jumpD,balD,balE,balW,jalD,jalE,jalW,jrD,jrE,jrW
 );
     // Decoder
     wire [5:0]op;
@@ -30,6 +31,17 @@ module main_dec(
     assign memtoRegM = signsM[1];
     assign jumpD = signsD[0];
     assign hilowriteM = signsM[11];
+    assign balD=signsD[10];
+    assign balE=signsE[10];
+    assign balW=signsW[10];
+    assign jalD=signsD[8];
+    assign jalE=signsE[8];
+    assign jalW=signsW[8];
+    assign jrD=signsD[9];
+    assign jrE=signsE[9];
+    assign jrW=signsW[9];
+
+
     assign ena = 1'b1;
 
     // signsD = {11hilowrite,10bal,9jr,8jal,7alusrcA,6regwrite,5regdst,,4alusrcB,3branch,2memWrite,1memtoReg,0jump}
@@ -62,7 +74,7 @@ module main_dec(
                     `FUN_DIVU  : signsD <= 12'b000001100000;   //divu
                     // 分支跳转
                     `FUN_JR    : signsD <= 12'b001000000001;
-                    `FUN_JALR  : signsD <= 12'b001000000001;
+                    `FUN_JALR  : signsD <= 12'b001001100000;
                     //数据移动指令
                     `FUN_MFHI  : signsD <= 12'b000001100000;
                     `FUN_MFLO  : signsD <= 12'b000001100000;
@@ -94,28 +106,27 @@ module main_dec(
             // 分支跳转指令
             // alusrcA,regwrite,regdst,alusrcB,branch,memWrite,memtoReg,jump
             // TODO 控制信号有待确认
-            // `OP_BEQ   : signsD <= 12'b000000001000; // BEQ
-            // `OP_BNE   : signsD <= 12'b000000001000; // BNE
-            // `OP_BGTZ  : signsD <= 12'b000000001000; // BGTZ
-            // `OP_BLEZ  : signsD <= 12'b0000b00001000; // BLEZ  
-            // `OP_SPEC_B:     // BGEZ,BLTZ,BGEZAL,BLTZAL
-            //     case(rt)
-            //         `RT_BGEZ : signsD <= 12'b0000b00001000;
-            //         `RT_BLTZ : signsD <= 12'b0000b00001000;
-            //         `RT_BGEZAL: signsD <= 12'b0000b00001000;
-            //         `RT_BLTZAL: signsD <= 12'b0000b00001000;
-            //         default:;
-            //     endcase
+            `OP_BEQ   : signsD <= 12'b000000001000; // BEQ
+            `OP_BNE   : signsD <= 12'b000000001000; // BNE
+            `OP_BGTZ  : signsD <= 12'b000000001000; // BGTZ
+            `OP_BLEZ  : signsD <= 12'b000000001000; // BLEZ  
+            `OP_SPEC_B:     // BGEZ,BLTZ,BGEZAL,BLTZAL
+                case(rt)
+                    `RT_BGEZ : signsD  <= 12'b000000001000;
+                    `RT_BLTZ : signsD  <= 12'b000000001000;
+                    `RT_BGEZAL: signsD <= 12'b010001001000;
+                    `RT_BLTZAL: signsD <= 12'b010001001000;
+                    default:;
+                endcase
             `OP_J     : signsD <= 12'b000000000001; // J     
             `OP_JAL   : signsD <= 12'b000101000000; 
-            `OP_JR    : signsD <= 12'b001000000001; // JR
-            `OP_JALR  : signsD <= 12'b001001100000; 
+
             default:;
         endcase
     end
    
     // Execute
-    flopenr #(12) dff1E(clk,rst,ena,signsD,signsE);
+    flopenrc #(12) dff1E(clk,rst,flushE,ena,signsD,signsE);
     // Mem
     flopenr #(12) dff1M(clk,rst,ena,signsE,signsM);
     // Write

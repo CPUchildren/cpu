@@ -15,13 +15,15 @@ wire stallF,stallD,flushD,flushE,forwardAD,forwardBD;
 wire [1:0]forwardAE,forwardBE;
 wire [4:0]rtD,rdD,rsD,saD,rtE,rdE,rsE,saE;
 wire [4:0]reg_waddrE,reg_waddrM,reg_waddrW;
-wire [31:0]pc_plus4F,pc_plus4D,pc_branchD,pc_next,pc_next_jump,rd1_saE;
+wire [31:0]pc_plus4F,pc_plus4D,pc_plus4E,pc_plus8E,pc_branchD,pc_next,pc_next_jump,pc_next_jr,pc_next_j,rd1_saE;
 wire [31:0]rd1D,rd2D,rd1E,rd2E,wd3W,rd1D_branch,rd2D_branch,sel_rd1E,sel_rd2E, data_ram_wdataM;
 reg [31:0] finaldataM,writedataM;
 wire [31:0]instrD_sl2,sign_immD,sign_immE,sign_immD_sl2, instrE, instrM;
-wire [31:0]srcB,alu_resE,alu_resM,alu_resW,data_ram_rdataW;
+wire [31:0]srcB,alu_resE,alu_resE_real,alu_resM,alu_resW,data_ram_rdataW;
 wire [63:0]hilo,aluout_64E,aluout_64M;
 wire regwriteW,regdstE,alusrcAE,alusrcBE,branchD,memWriteM,memtoRegW,jumpD;
+wire balD,balE,balW,jalD,jalE,jalW,jrD,jrE,jrW;
+
 // 数据冒险添加信号
 wire regwriteE,regwriteM,memtoRegE,memtoRegM;
 wire [7:0]alucontrolE;
@@ -30,44 +32,30 @@ wire div_ready,start_div,signed_div,stall_divE;
 wire hilo_in_signal;
 wire [63:0] hilo_i,div_result,div_resultM;
 wire stallE;
-// BUG 是不是写复杂了
-// // 数据移动指令 HILO 相关定义
-// wire [31:0]HI,LO;     // 定义hi和lo寄存器最新的值。
-// wire [31:0]hi_i,lo_i; // 输入的的HI，LO寄存器的值。
-// wire [31:0]hilo_dataE,hilo_dataM,hilo_dataW; // 要写到HILO特殊寄存器的数值。
-// wire HI_IN,LO_IN;     // E阶段判断要将值写入HI还是LO。
-// wire HI_OUT,LO_OUT;   // E阶段判断要取出HI还是LO的值。
-// wire [31:0]hi_E,lo_E; // E执行阶段要写入HI，LO寄存器的值
-// wire [31:0]hi_M,lo_M; // M访存阶段要写入HI，LO寄存器的值。
-// wire [31:0]hi_W,lo_W; // W回写阶段要写入HI，LO寄存器的值
-// wire wehilo_E,wehilo_M,wehilo_W; //处于访存和回写阶段的指令是否要写入HI，LO寄存器
 
 assign clear = 1'b0;
 assign ena = 1'b1;
-assign flushD = pcsrcD | jumpD;
+assign flushD = pcsrcD | jumpD | jalD | jrD;
 
 // ====================================== Fetch ======================================
-mux2 mux2_branch(
-    .a(pc_plus4F),
-    .b(pc_branchD),
-    .sel(pcsrcD),
-    .y(pc_next)
-    ); // 注意，这里是PC_next是沿用的pc_plus4F
-
 mux2 mux2_jump(
-    .a(pc_next),
-    .b({pc_plus4D[31:28],instrD_sl2[27:0]}), // 注意，这里是D阶段执行的pc_plus4D
-    .sel(jumpD),
-    .y(pc_next_jump)
+    .a(pc_next_jump),
+    .b(pc_next_jr), // 选择是jr还是单纯jump的PC
+    .sel(jrD),
+    .y(pc_next_j)
 );
-
-
-
+mux3 mux3_branch(
+    .d0(pc_plus4F),
+    .d1(pc_branchD),
+    .d2(pc_next_j),
+    .sel({jumpD|jalD|jrD,pcsrcD}),
+    .y(pc_next)
+    ); // 三选一，正常PC，分支PC，跳转PC
 pc pc(
     .clk(clk),
     .rst(rst),
     .ena(~stallF),
-    .din(pc_next_jump),
+    .din(pc_next),
     .dout(pc_now)
 );
 
@@ -86,6 +74,7 @@ flopenrc DFF_pc_plus4D(clk,rst,flushD,~stallD,pc_plus4F,pc_plus4D);
 main_dec main_dec(
     .clk(clk),
     .rst(rst),
+    .flushE(flushE),
     .instrD(instrD),
     
     .regwriteW(regwriteW),
@@ -100,7 +89,16 @@ main_dec main_dec(
     .regwriteM(regwriteM),
     .memtoRegE(memtoRegE),
     .memtoRegM(memtoRegM),
-    .hilowriteM(hilowriteM)
+    .hilowriteM(hilowriteM),
+    .balD(balD),
+    .balE(balE),
+    .balW(balW),
+    .jalD(jalD),
+    .jalE(jalE),
+    .jalW(jalW),
+    .jrD(jrD),
+    .jrE(jrE),
+    .jrW(jrW)
 );
 
 alu_dec alu_decoder(
@@ -135,7 +133,6 @@ sl2 sl2_instr(
 signext sign_extend(
     .a(instrD[15:0]), 
     .type(instrD[29:28]),
-
     .y(sign_immD) 
 );
 
@@ -149,14 +146,23 @@ adder adder_branch(
     .b(pc_plus4D),
     .y(pc_branchD)
 );
+// 跳转PC
+assign pc_next_jump={pc_plus4D[31:28],instrD_sl2[27:0]};
+assign pc_next_jr=rd1D;
 
 // ******************* 控制冒险 *****************
 // 在 regfile 输出后添加一个判断相等的模块，即可提前判断 beq，以将分支指令提前到Decode阶段（预测）
 mux2 #(32) mux2_forwardAD(rd1D,alu_resM,forwardAD,rd1D_branch);
 mux2 #(32) mux2_forwardBD(rd2D,alu_resM,forwardBD,rd2D_branch);
-// assign equalD = (rd1D_branch == rd2D_branch);
-assign equalD = (rd1D_branch == rd2D_branch) ? 1:0;
-assign pcsrcD = equalD & branchD;
+
+eqcmp pc_predict(
+    .a(rd1D_branch),
+    .b(rd2D_branch),
+    .op(instrD[31:26]),
+    .rt(rtD),
+    .y(equalD)
+);
+assign pcsrcD = equalD & (branchD|balD);
 
 // ====================================== Execute ======================================
 flopenrc #(32) DFF_rd1E(clk,rst,flushE,~stallE,rd1D,rd1E);
@@ -167,11 +173,23 @@ flopenrc #(5) DFF_rdE(clk,rst,flushE,~stallE,rdD,rdE);
 flopenrc #(5) DFF_rsE(clk,rst,flushE,~stallE,rsD,rsE);
 flopenrc #(5) DFF_saE(clk,rst,flushE,~stallE,saD,saE);
 flopenrc DFF_instrE(clk,rst,flushE,~stallE,instrD,instrE);
-
+flopenrc DFF_pc_plus4E(clk,rst,flushE,ena,pc_plus4D,pc_plus4E);
 mux2 #(5) mux2_regDst(.a(rtE),.b(rdE),.sel(regdstE),.y(reg_waddrE));
 
-mux2 #(32) mux2_alusrcAE(.a(rd1E),.b({{27{1'b0}},saE}),.sel(alusrcAE),.y(rd1_saE));
-
+// link指令对寄存器的选择
+mux3 #(5) mux3_regDst(
+    .d0(rtE),
+    .d1(rdE),
+    .d2(5'b11111),
+    .sel({balE|jalE,regdstE}),
+    .y(reg_waddrE)
+    );
+mux2 #(32) mux2_alusrcAE(
+    .a(rd1E),
+    .b({{27{1'b0}},saE}),
+    .sel(alusrcAE),
+    .y(rd1_saE)
+    );
 // ******************* 数据冒险 *****************
 // 00原结果，01写回结果_W， 10计算结果_M
 mux3 #(32) mux3_forwardAE(rd1_saE,wd3W,alu_resM,forwardAE,sel_rd1E);
@@ -194,6 +212,20 @@ alu alu(
     .zero() // wire zero ==> branch跳转控制（已经升级到*控制冒险*）
 );
 
+adder pc_8(
+    .a(pc_plus4E),
+    .b(32'h4),
+    .y(pc_plus8E)
+);
+
+// link指令需要对alu_resE多进行一次选择再向后传
+mux2 alu_pc8(
+    .a(alu_resE),
+    .b(pc_plus8E),
+    .sel((balE | jalE) | jrE),
+    .y(alu_resE_real)
+);
+
 // TODO 为啥div要放在datapath里面
 assign hilo_in_signal=((alucontrolE ==`ALUOP_DIV) | (alucontrolE ==`ALUOP_DIVU))? 1:0;
 mux2 #(64) mux2_hiloin(.a(aluout_64M),.b(div_resultM),.sel(hilo_in_signal),.y(hilo_i));
@@ -211,18 +243,13 @@ div mydiv(
 );
 
 // ====================================== Memory ======================================
-flopenrc DFF_alu_resM(clk,rst,clear,ena,alu_resE,alu_resM);
+flopenrc DFF_alu_resM(clk,rst,clear,ena,alu_resE_real,alu_resM);
 flopenrc DFF_data_ram_wdataM(clk,rst,clear,ena,sel_rd2E,data_ram_wdataM);
 flopenrc #(5) DFF_reg_waddrM(clk,rst,clear,ena,reg_waddrE,reg_waddrM);
 // flopenrc #(1) DFF_zeroM(clk,rst,clear,ena,zero,zeroM);  ==> 控制冒险，已将分支指令提前到Decode阶段
 flopenrc DFF_instrM(clk,rst,clear,ena,instrE,instrM);
 flopenrc #(64) DFF_aluout_64M(clk,rst,clear,ena,aluout_64E,aluout_64M);
 
-// BUG hilo
-//flopenrc DFF_hiM(clk,rst,1'b0,1'b1,hi_E,hi_M);
-//flopenrc DFF_loM(clk,rst,1'b0,1'b1,lo_E,lo);
-//flopenrc DFF_wehiloM(clk,rst,1'b0,1'b1,wehilo_E,wehilo_M);
-//flopenrc DFF_hilodataM(clk,rst,1'b0,1'b1,hilo_dataE,hilo_dataM);
 
 // ******************* wys：数据移动相关指令 *****************
 // TODO M阶段写回hilo
@@ -232,44 +259,6 @@ hilo_reg hilo_reg(
 	// .hilo_res(hilo_res)
 	.hilo(hilo)  // hilo current data
     );
-// BUG 是不是麻烦了
-// always @ (*) begin
-//     if(rst == 1) begin
-//     {HI,LO} <= {`ZeroWord,`ZeroWord};
-//     end else if(wehilo_M == 1) begin
-//     {HI,LO} <= {hi_M,lo_M};   // 访存阶段的指令要写HI、LO寄存器
-//     end else if(wehilo_W == 1) begin
-//     {HI,LO} <= {hi_W,lo_W};     // 回写阶段的指令要写HI、LO寄存器
-//     end else begin
-//     {HI,LO} <= {hi_i,lo_i};
-//     end
-// end
-// always @(HI_IN,LO_IN,HI_OUT,LO_OUT) begin
-//     if (HI_IN) begin
-//         wehilo_E<=1'b1;  // 要写入hilo寄存器。
-//         hi_E<=rd1D;      // 要将rd1写入hi
-//         lo_E<=LO;        // lo值不变
-//         holi_dataE<=`ZeroWord   // holi不向通用寄存器传数据
-//     end
-//     else if (LO_IN) begin
-//         wehilo_E<=1'b1;
-//         hi_E<=HI;   
-//         lo_E<=rd1D;   // 要将rd1写入lo
-//         holi_dataE<=`ZeroWord
-//     end
-//     else if (HI_OUT) begin
-//         wehilo_E<=1'b0; // 不写入hilo寄存器
-//         hi_E<=HI;
-//         lo_E<=LO;
-//         holi_dataE<=HI; //将hi的值向后传，写入通用寄存器中
-//     end
-//     else if (HI_OUT) begin
-//         wehilo_E<=1'b0;
-//         hi_E<=HI;
-//         lo_E<=LO;
-//         holi_dataE<=LO; //将hi的值向后传
-//     end
-// end
 
 assign data_ram_waddr = alu_resM;
 // assign pcsrcM = zeroM & branchM;  ==> 控制冒险，已将分支指令提前到Decode阶段
@@ -344,24 +333,6 @@ end
 flopenrc DFF_alu_resW(clk,rst,clear,ena,alu_resM,alu_resW);
 flopenrc DFF_data_ram_rdataW(clk,rst,clear,ena,finaldataM,data_ram_rdataW);
 flopenrc #(5) DFF_reg_waddrW(clk,rst,clear,ena,reg_waddrM,reg_waddrW);
-
-//flopenrc DFF_hiW(clk,rst,1'b0,1'b1,hi_M,hi_W);
-//flopenrc DFF_loW(clk,rst,1'b0,1'b1,lo_M,lo_W);
-//flopenrc DFF_wehiloW(clk,rst,1'b0,1'b1,wehilo_M,wehilo_W);
-//flopenrc DFF_hilodataW(clk,rst,1'b0,1'b1,hilo_dataM,hilo_dataW);
-
-// BUG 可以直接删掉了
-//hiloreg hilo(       // 对hilo寄存器的操作
-//    .clk(clk),
-//    .rst(rst),
-//    .we(wehilo_W),
-//    .hi(hi_W),
-//    .lo(lo_W),
-//    .hi_o(HI),
-//    .lo_o(LO)
-//);
-
-
 
 
 mux2 mux2_memtoReg(.a(alu_resW),.b(data_ram_rdataW),.sel(memtoRegW),.y(wd3W));
