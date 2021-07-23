@@ -45,8 +45,6 @@ module hilo_reg(
 	end
 endmodule
 
-
-
 // module hilo_reg(
 //                 input wire        clk,rst,we, //both write lo and hi
 //                 input wire [1:0] mfhi_loM,

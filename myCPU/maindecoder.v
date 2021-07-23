@@ -39,12 +39,12 @@ module main_dec(
             `OP_R_TYPE:
                 case (funct)
                     //移位指令
-                    `FUN_SLL   : signsD <= 12'b000011110000 ;
-                    `FUN_SLLV  : signsD <= 12'b000001110000 ;
-                    `FUN_SRL   : signsD <= 12'b000011110000 ;
-                    `FUN_SRLV  : signsD <= 12'b000001110000 ;
-                    `FUN_SRA   : signsD <= 12'b000011110000 ;
-                    `FUN_SRAV  : signsD <= 12'b000001110000 ;
+                    `FUN_SLL   : signsD <= 12'b000011100000 ;
+                    `FUN_SLLV  : signsD <= 12'b000001100000 ;
+                    `FUN_SRL   : signsD <= 12'b000011100000 ;
+                    `FUN_SRLV  : signsD <= 12'b000001100000 ;
+                    `FUN_SRA   : signsD <= 12'b000011100000 ;
+                    `FUN_SRAV  : signsD <= 12'b000001100000 ;
                     //逻辑和算术指令
                     `FUN_AND   : signsD <= 12'b000001100000;    //and
                     `FUN_OR    : signsD <= 12'b000001100000;    //or

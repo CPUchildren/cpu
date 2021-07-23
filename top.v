@@ -76,4 +76,11 @@ data_ram data_ram
     .dina  (cpu_data_wdata      ),
     .douta (cpu_data_rdata      ) 
 );
+
+
+    // BUG test
+	always @(posedge clk) begin
+		$display("top_pc:%d",cpu_inst_addr);
+        $display("top_instr:%h",cpu_inst_rdata);
+	end
 endmodule

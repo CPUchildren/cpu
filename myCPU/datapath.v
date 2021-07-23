@@ -4,7 +4,7 @@ module datapath (
     input wire clk,rst,
     input wire [31:0]instrF,data_ram_rdataM,
     output wire [31:0]instrD,pc_now,data_ram_waddr,
-    // output reg [3:0] sel,
+    output reg [3:0] sel,
     output reg [31:0] writedataM//data_ram_wdataM
     
 );
@@ -252,74 +252,74 @@ assign data_ram_waddr = alu_resM;
 // assign pcsrcM = zeroM & branchM;  ==> 控制冒险，已将分支指令提前到Decode阶段
 
 // TODO =====================访存==============================
-// always @(*) begin
-//     case(instrM[31:26])
-//         `OP_LW,`OP_LB,`OP_LBU,`OP_LH,`OP_LHU: sel <= 4'b0000;
-//         `OP_SW: begin
-//             writedataM <= data_ram_wdataM;
-//             sel <=4'b1111;
-//         end
-//         `OP_SH: begin
-//             writedataM <= {data_ram_wdataM[15:0],data_ram_wdataM[15:0]};
-//             case(alu_resM[1:0])
-//                 2'b00: sel <= 4'b1100;
-//                 2'b10: sel <= 4'b0011;
-//                 default: ;
-//             endcase
-//         end
-//         `OP_SB: begin
-//             writedataM <= {data_ram_wdataM[7:0],data_ram_wdataM[7:0],data_ram_wdataM[7:0],data_ram_wdataM[7:0]};
-//             case(alu_resM[1:0])
-//                 2'b00: sel <= 4'b1000;
-//                 2'b01: sel <= 4'b0100;
-//                 2'b10: sel <= 4'b0010;
-//                 2'b11: sel <= 4'b0001;
-//                 default: ;
-//             endcase
-//         end
-//     endcase
-// end
+always @(*) begin
+    case(instrM[31:26])
+        `OP_LW,`OP_LB,`OP_LBU,`OP_LH,`OP_LHU: sel <= 4'b0000;
+        `OP_SW: begin
+            writedataM <= data_ram_wdataM;
+            sel <=4'b1111;
+        end
+        `OP_SH: begin
+            writedataM <= {data_ram_wdataM[15:0],data_ram_wdataM[15:0]};
+            case(alu_resM[1:0])
+                2'b00: sel <= 4'b1100;
+                2'b10: sel <= 4'b0011;
+                default: ;
+            endcase
+        end
+        `OP_SB: begin
+            writedataM <= {data_ram_wdataM[7:0],data_ram_wdataM[7:0],data_ram_wdataM[7:0],data_ram_wdataM[7:0]};
+            case(alu_resM[1:0])
+                2'b00: sel <= 4'b1000;
+                2'b01: sel <= 4'b0100;
+                2'b10: sel <= 4'b0010;
+                2'b11: sel <= 4'b0001;
+                default: ;
+            endcase
+        end
+    endcase
+end
 
-// always @(*) begin
-//     case(instrM[31:26])
-//         `OP_LW: begin
-//             finaldataM <= data_ram_rdataM;
-//         end
-//         `OP_LB: begin
-//             case(alu_resM[1:0])
-//                 2'b00: finaldataM <= {{24{data_ram_rdataM[31]}},data_ram_rdataM[31:24]};
-//                 2'b01: finaldataM <= {{24{data_ram_rdataM[23]}},data_ram_rdataM[23:16]};
-//                 2'b10: finaldataM <= {{24{data_ram_rdataM[15]}},data_ram_rdataM[15:8]};
-//                 2'b11: finaldataM <= {{24{data_ram_rdataM[7]}},data_ram_rdataM[7:0]};
-//             endcase
-//         end
-//         `OP_LBU: begin
-//             case(alu_resM[1:0])
-//                 2'b00: finaldataM <= {{24{0}},data_ram_rdataM[31:24]};
-//                 2'b01: finaldataM <= {{24{0}},data_ram_rdataM[23:16]};
-//                 2'b10: finaldataM <= {{24{0}},data_ram_rdataM[15:8]};
-//                 2'b11: finaldataM <= {{24{0}},data_ram_rdataM[7:0]};
-//             endcase
-//         end
-//         `OP_LH: begin
-//             case(alu_resM[1])
-//                 2'b0: finaldataM <= {{24{data_ram_rdataM[31]}},data_ram_rdataM[31:16]};
-//                 2'b1: finaldataM <= {{24{data_ram_rdataM[15]}},data_ram_rdataM[15:0]};
-//             endcase
-//         end
-//         `OP_LHU: begin
-//             case(alu_resM[1])
-//                 2'b0: finaldataM <= {{24{0}},data_ram_rdataM[31:16]};
-//                 2'b1: finaldataM <= {{24{0}},data_ram_rdataM[15:0]};
-//             endcase
-//         end
-//         default: ;
-//     endcase
-// end
+always @(*) begin
+    case(instrM[31:26])
+        `OP_LW: begin
+            finaldataM <= data_ram_rdataM;
+        end
+        `OP_LB: begin
+            case(alu_resM[1:0])
+                2'b00: finaldataM <= {{24{data_ram_rdataM[31]}},data_ram_rdataM[31:24]};
+                2'b01: finaldataM <= {{24{data_ram_rdataM[23]}},data_ram_rdataM[23:16]};
+                2'b10: finaldataM <= {{24{data_ram_rdataM[15]}},data_ram_rdataM[15:8]};
+                2'b11: finaldataM <= {{24{data_ram_rdataM[7]}},data_ram_rdataM[7:0]};
+            endcase
+        end
+        `OP_LBU: begin
+            case(alu_resM[1:0])
+                2'b00: finaldataM <= {{24{0}},data_ram_rdataM[31:24]};
+                2'b01: finaldataM <= {{24{0}},data_ram_rdataM[23:16]};
+                2'b10: finaldataM <= {{24{0}},data_ram_rdataM[15:8]};
+                2'b11: finaldataM <= {{24{0}},data_ram_rdataM[7:0]};
+            endcase
+        end
+        `OP_LH: begin
+            case(alu_resM[1])
+                2'b0: finaldataM <= {{24{data_ram_rdataM[31]}},data_ram_rdataM[31:16]};
+                2'b1: finaldataM <= {{24{data_ram_rdataM[15]}},data_ram_rdataM[15:0]};
+            endcase
+        end
+        `OP_LHU: begin
+            case(alu_resM[1])
+                2'b0: finaldataM <= {{24{0}},data_ram_rdataM[31:16]};
+                2'b1: finaldataM <= {{24{0}},data_ram_rdataM[15:0]};
+            endcase
+        end
+        default: ;
+    endcase
+end
 
 // ====================================== WriteBack ======================================
 flopenrc DFF_alu_resW(clk,rst,clear,ena,alu_resM,alu_resW);
-flopenrc DFF_data_ram_rdataW(clk,rst,clear,ena,finaldata,data_ram_rdataW);
+flopenrc DFF_data_ram_rdataW(clk,rst,clear,ena,finaldataM,data_ram_rdataW);
 flopenrc #(5) DFF_reg_waddrW(clk,rst,clear,ena,reg_waddrM,reg_waddrW);
 
 //flopenrc DFF_hiW(clk,rst,1'b0,1'b1,hi_M,hi_W);
