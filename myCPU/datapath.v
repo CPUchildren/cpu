@@ -10,11 +10,11 @@ module datapath (
     
 );
 
-// ====================================== å˜é‡å®šä¹‰åŒºï¼Œevery part ======================================
+// ====================================== ±äÁ¿¶¨ÒåÇø£¬every part ======================================
 wire clear,ena;
-wire [63:0]hilo,hilo_i;
-wire div_ready,start_div,signed_div,stall_divE,hilo_in_signal;
-
+wire [63:0]hilo;   // hilo_i;
+//wire div_ready,start_div,signed_div,hilo_in_signal;
+//wire [1:0] state_div;
 // F
 wire stallF;
 wire [31:0]pc_plus4F,pc_next,pc_next_jump,pc_next_jr,pc_next_j;
@@ -25,18 +25,18 @@ wire [4:0]rtD,rdD,rsD,saD;
 wire [31:0]pc_nowD,pc_plus4D,pc_branchD,rd1D,rd2D,rd1D_branch,rd2D_branch;
 wire [31:0]instrD,instrD_sl2,sign_immD,sign_immD_sl2;
 // E
-wire flushE,stallE,regdstE,alusrcAE,alusrcBE,regwriteE,memtoRegE,jrE,balE,jalE;
+wire flushE,stallE,regdstE,alusrcAE,alusrcBE,regwriteE,memtoRegE,jrE,balE,jalE,stall_divE;
 wire [1:0]forwardAE,forwardBE;
 wire [4:0]rtE,rdE,rsE,saE,reg_waddrE;
 wire [7:0]alucontrolE;
 wire [31:0]instrE,rd1E,rd2E,srcB,sign_immE,pc_plus4E,pc_plus8E,rd1_saE;
 wire [31:0]pc_nowE,alu_resE,sel_rd1E,sel_rd2E,alu_resE_real;
-wire [63:0]div_result,aluout_64E;
+wire [63:0]aluout_64E;  //div_result
 // M
 wire memtoRegM,regwriteM,memWriteM;
 wire [4:0]reg_waddrM;
 wire [31:0]instrM,pc_nowM,alu_resM,read_dataM,sel_rd2M;
-wire [63:0]div_resultM,aluout_64M;
+wire [63:0]aluout_64M;  //div_resultM
 // W
 wire memtoRegW,regwriteW,balW,jalW;
 wire [4:0]reg_waddrW;
@@ -49,7 +49,7 @@ assign flushD = pcsrcD | jumpD | jalD | jrD;
 // ====================================== Fetch ======================================
 mux2 mux2_jump(
     .a(pc_next_jump),
-    .b(pc_next_jr), // é€‰æ‹©æ˜¯jrè¿˜æ˜¯å•çº¯jumpçš„PC
+    .b(pc_next_jr), // Ñ¡ÔñÊÇjr»¹ÊÇµ¥´¿jumpµÄPC
     .sel(jrD),
     .y(pc_next_j)
 );
@@ -59,7 +59,7 @@ mux3 mux3_branch(
     .d2(pc_next_j),
     .sel({jumpD|jalD|jrD,pcsrcD}),
     .y(pc_next)
-    ); // ä¸‰é€‰ä¸€ï¼Œæ­£å¸¸PCï¼Œåˆ†æ”¯PCï¼Œè·³è½¬PC
+    ); // ÈıÑ¡Ò»£¬Õı³£PC£¬·ÖÖ§PC£¬Ìø×ªPC
 pc pc(
     .clk(clk),
     .rst(rst),
@@ -75,7 +75,7 @@ adder adder(
 );
 
 // ====================================== Decoder ======================================
-// å»¶è¿Ÿæ§½ç»§ç»­æ‰§è¡Œï¼Œä¸æ¸…ç©º
+// ÑÓ³Ù²Û¼ÌĞøÖ´ĞĞ£¬²»Çå¿Õ
 flopenrc DFF_instrD   (clk,rst,clear,~stallD,instrF,instrD);
 flopenrc DFF_pc_nowD  (clk,rst,clear,~stallD,pc_now,pc_nowD);
 flopenrc DFF_pc_plus4D(clk,rst,clear,~stallD,pc_plus4F,pc_plus4D);
@@ -85,6 +85,7 @@ main_dec main_dec(
     .clk(clk),
     .rst(rst),
     .flushE(flushE),
+    .stallE(stallE),
     .instrD(instrD),
     
     .regwriteW(regwriteW),
@@ -113,6 +114,8 @@ main_dec main_dec(
 alu_dec alu_decoder(
     .clk(clk), 
     .rst(rst),
+    .flushE(flushE),
+    .stallE(stallE),
     .instrD(instrD),
     .aluopE(alucontrolE)
 );
@@ -127,13 +130,13 @@ regfile regfile(
 	.we3(regwriteW),
 	.ra1(instrD[25:21]), 
     .ra2(instrD[20:16]),
-    .wa3(reg_waddrW), // å‰inåout
+    .wa3(reg_waddrW), // Ç°inºóout
 	.wd3(wd3W), 
 	.rd1(rd1D),
     .rd2(rd2D)
 );
 
-// jumpæŒ‡ä»¤æ‹“å±•
+// jumpÖ¸ÁîÍØÕ¹
 sl2 sl2_instr(
     .a(instrD),
     .y(instrD_sl2)
@@ -155,12 +158,12 @@ adder adder_branch(
     .b(pc_plus4D),
     .y(pc_branchD)
 );
-// è·³è½¬PC
+// Ìø×ªPC
 assign pc_next_jump={pc_plus4D[31:28],instrD_sl2[27:0]};
 assign pc_next_jr=rd1D;
 
-// ******************* æ§åˆ¶å†’é™© *****************
-// åœ¨ regfile è¾“å‡ºåæ·»åŠ ä¸€ä¸ªåˆ¤æ–­ç›¸ç­‰çš„æ¨¡å—ï¼Œå³å¯æå‰åˆ¤æ–­ beqï¼Œä»¥å°†åˆ†æ”¯æŒ‡ä»¤æå‰åˆ°Decodeé˜¶æ®µï¼ˆé¢„æµ‹ï¼‰
+// ******************* ¿ØÖÆÃ°ÏÕ *****************
+// ÔÚ regfile Êä³öºóÌí¼ÓÒ»¸öÅĞ¶ÏÏàµÈµÄÄ£¿é£¬¼´¿ÉÌáÇ°ÅĞ¶Ï beq£¬ÒÔ½«·ÖÖ§Ö¸ÁîÌáÇ°µ½Decode½×¶Î£¨Ô¤²â£©
 mux2 #(32) mux2_forwardAD(rd1D,alu_resM,forwardAD,rd1D_branch);
 mux2 #(32) mux2_forwardBD(rd2D,alu_resM,forwardBD,rd2D_branch);
 
@@ -185,7 +188,7 @@ flopenrc DFF_instrE         (clk,rst,flushE,~stallE,instrD,instrE);
 flopenrc DFF_pc_nowE        (clk,rst,flushE,~stallE,pc_nowD,pc_nowE);
 flopenrc DFF_pc_plus4E      (clk,rst,flushE,~stallE,pc_plus4D,pc_plus4E);
 
-// linkæŒ‡ä»¤å¯¹å¯„å­˜å™¨çš„é€‰æ‹©
+// linkÖ¸Áî¶Ô¼Ä´æÆ÷µÄÑ¡Ôñ
 mux3 #(5) mux3_regDst(
     .d0(rtE),
     .d1(rdE),
@@ -199,26 +202,28 @@ mux2 #(32) mux2_alusrcAE(
     .sel(alusrcAE),
     .y(rd1_saE)
     );
-// ******************* æ•°æ®å†’é™© *****************
-// 00åŸç»“æœï¼Œ01å†™å›ç»“æœ_Wï¼Œ 10è®¡ç®—ç»“æœ_M
+// ******************* Êı¾İÃ°ÏÕ *****************
+// 00Ô­½á¹û£¬01Ğ´»Ø½á¹û_W£¬ 10¼ÆËã½á¹û_M
 mux3 #(32) mux3_forwardAE(rd1_saE,wd3W,alu_resM,forwardAE,sel_rd1E);
 mux3 #(32) mux3_forwardBE(rd2E,wd3W,alu_resM,forwardBE,sel_rd2E);
 mux2 mux2_aluSrc(.a(sel_rd2E),.b(sign_immE),.sel(alusrcBE),.y(srcB));
 
 alu alu(
+    .clk(clk),
+    .rst(rst),
     .a(sel_rd1E),
     .b(srcB),
     .aluop(alucontrolE),
     .hilo(hilo),
     .div_ready(div_ready), 
-    
+    .state_div(state_div),
     .start_div(start_div),
     .signed_div(signed_div),
     .stall_div(stall_divE),
     .y(alu_resE),
     .aluout_64(aluout_64E),
     .overflow(),
-    .zero() // wire zero ==> branchè·³è½¬æ§åˆ¶ï¼ˆå·²ç»å‡çº§åˆ°*æ§åˆ¶å†’é™©*ï¼‰
+    .zero() // wire zero ==> branchÌø×ª¿ØÖÆ£¨ÒÑ¾­Éı¼¶µ½*¿ØÖÆÃ°ÏÕ*£©
 );
 
 adder pc_8(
@@ -227,7 +232,7 @@ adder pc_8(
     .y(pc_plus8E)
 );
 
-// linkæŒ‡ä»¤éœ€è¦å¯¹alu_resEå¤šè¿›è¡Œä¸€æ¬¡é€‰æ‹©å†å‘åä¼ 
+// linkÖ¸ÁîĞèÒª¶Ôalu_resE¶à½øĞĞÒ»´ÎÑ¡ÔñÔÙÏòºó´«
 mux2 alu_pc8(
     .a(alu_resE),
     .b(pc_plus8E),
@@ -235,22 +240,25 @@ mux2 alu_pc8(
     .y(alu_resE_real)
 );
 
-// TODO ä¸ºå•¥divè¦æ”¾åœ¨datapathé‡Œé¢
-assign hilo_in_signal=((alucontrolE ==`ALUOP_DIV) | (alucontrolE ==`ALUOP_DIVU))? 1:0;
-mux2 #(64) mux2_hiloin(.a(aluout_64M),.b(div_resultM),.sel(hilo_in_signal),.y(hilo_i));
-
-// é™¤æ³•
-div mydiv(
-	.clk(clk),
-	.rst(rst),
-	.signed_div_i(signed_div), 
-	.opdata1_i(sel_rd1E),
-	.opdata2_i(srcB),
-	.start_i(start_div),
-	.annul_i(1'b0),
-	.result_o(div_result),
-	.ready_o(div_ready)
-);
+// TODO ÎªÉ¶divÒª·ÅÔÚdatapathÀïÃæ
+//assign hilo_in_signal=((alucontrolE ==`ALUOP_DIV) | (alucontrolE ==`ALUOP_DIVU))? 1:0;
+//mux2 #(64) mux2_hiloin(.a(aluout_64M),.b(div_resultM),.sel(hilo_in_signal),.y(hilo_i));
+//// ³ı·¨
+//flopenrc DFF_div_stallE      (clk,rst,clear,ena,stallE,div_stallE);
+//div mydiv(
+//	.clk(clk),
+//	.rst(rst),
+//	.ena(~div_stallE),
+//	.signed_div_i(signed_div), 
+//	.opdata1_i(sel_rd1E),
+//	.opdata2_i(srcB),
+	
+//	.state(state_div),
+//	.start_i(start_div),
+//	.annul_i(1'b0),
+//	.result_o(div_result),
+//	.ready_o(div_ready)
+//);
 
 // ====================================== Memory ======================================
 flopenrc DFF_alu_resM         (clk,rst,clear,ena,alu_resE_real,alu_resM);
@@ -259,19 +267,20 @@ flopenrc #(5) DFF_reg_waddrM  (clk,rst,clear,ena,reg_waddrE,reg_waddrM);
 flopenrc DFF_instrM           (clk,rst,clear,ena,instrE,instrM);
 flopenrc #(64) DFF_aluout_64M (clk,rst,clear,ena,aluout_64E,aluout_64M);
 flopenrc DFF_pc_nowM          (clk,rst,clear,ena,pc_nowE,pc_nowM);
+flopenrc #(64) DFF_divResultM(clk,rst,clear,ena,div_result,div_resultM);
 
-// ******************* wysï¼šæ•°æ®ç§»åŠ¨ç›¸å…³æŒ‡ä»¤ *****************
-// Mé˜¶æ®µå†™å›hilo
+// ******************* wys£ºÊı¾İÒÆ¶¯Ïà¹ØÖ¸Áî *****************
+// M½×¶ÎĞ´»Øhilo
 hilo_reg hilo_reg(
 	.clk(clk),.rst(rst),.we(hilowriteM),
-	.hilo_i(hilo_i),
+	.hilo_i(aluout_64M),
 	// .hilo_res(hilo_res)
 	.hilo(hilo)  // hilo current data
     );
 
 assign data_sram_waddr = alu_resM;
 
-// è®¿å­˜è®¾ç½®
+// ·Ã´æÉèÖÃ
 lsmem lsmen(
     .opM(instrM[31:26]),
     .sel_rd2M(sel_rd2M), // writedata_4B
@@ -292,12 +301,23 @@ flopenrc DFF_pc_nowW          (clk,rst,clear,ena,pc_nowM,pc_nowW);
 
 mux2 mux2_memtoReg(.a(alu_resW),.b(data_sram_rdataW),.sel(memtoRegW),.y(wd3W));
 
-// ******************* å†’é™©ä¿¡å·æ€»æ§åˆ¶ *****************
+// ******************* Ã°ÏÕĞÅºÅ×Ü¿ØÖÆ *****************
 hazard hazard(
     regwriteE,regwriteM,regwriteW,memtoRegE,memtoRegM,branchD,jrD,stall_divE,
     rsD,rtD,rsE,rtE,reg_waddrM,reg_waddrW,reg_waddrE,
     stallF,stallD,stallE,flushE,forwardAD,forwardBD,
     forwardAE, forwardBE
 );
-
+//always @(posedge clk) begin
+//    if(alucontrolE==`ALUOP_DIV || alucontrolE==`ALUOP_DIVU) begin
+////        $display("alucontrolE: %b",alucontrolE);
+////        $display("hi: %h", hilo_i[63:32]);
+////        $display("lo: %h", hilo_i[31:0]);
+//        $display("instrD: %b", instrD);
+//        $display("stallD: %b", stallD);
+//        $display("stallF: %b", stallF);
+//        $display("stallE: %b", stallE);
+//        $display("div_ready: %b",div_ready);
+//      end
+//    end
 endmodule

@@ -1,6 +1,6 @@
 `include "defines.vh"
 module alu_dec (
-    input wire clk, rst,
+    input wire clk, rst,flushE, stallE,
     input wire [31:0]instrD,
     output wire[7:0]aluopE
 );  
@@ -71,10 +71,10 @@ module alu_dec (
             `OP_SB:   aluopD <= `ALUOP_ADD;
             `OP_SH:   aluopD <= `ALUOP_ADD;
             `OP_SW:   aluopD <= `ALUOP_ADD;
-            // 分支跳转指令，D阶段判断，不需要经过alu
+            // 分支跳转指令，D阶段判断，不�?要经过alu
             default: aluopD <= 8'b00000000;
         endcase
     end
     // 
-    flopenr #(8) dff2E(clk,rst,ena,aluopD,aluopE);
+    flopenrc #(8) dff2E(clk,rst,flushE,~stallE,aluopD,aluopE);
 endmodule

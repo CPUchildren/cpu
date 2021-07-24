@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
 `include "defines.vh"
 module main_dec(
-    input wire clk,rst,flushE,
+    input wire clk,rst,flushE,stallE,
     input wire [31:0]instrD,
     output wire regwriteW,regdstE,alusrcAE,alusrcBE,branchD,memWriteM,memtoRegW,
     output wire regwriteE,regwriteM,memtoRegE,memtoRegM,hilowriteM,
@@ -53,14 +53,14 @@ module main_dec(
                     `FUN_SLL   : signsD <= 12'b000011100000 ;
                     `FUN_SRL   : signsD <= 12'b000011100000 ;
                     `FUN_SRA   : signsD <= 12'b000011100000 ;
-                    //逻辑和算术指令 default
+                    //逻辑和算术指�? default
                     // 分支跳转
                     `FUN_JR    : signsD <= 12'b001000000001;
                     `FUN_JALR  : signsD <= 12'b001001100000;
                     //数据移动指令
                     `FUN_MTHI  : signsD <= 12'b100000000000;
                     `FUN_MTLO  : signsD <= 12'b100000000000;
-                    //简化，r-type默认控制信号
+                    //�?化，r-type默认控制信号
                     default: signsD <= 12'b000001100000;
                 endcase
             // 访存指令
@@ -74,7 +74,7 @@ module main_dec(
             `OP_SW    : signsD <= 12'b000000010110; // sw
             //arithmetic type
             `OP_ADDI  : signsD <= 12'b000001010000; // addi
-            `OP_ADDIU : signsD <= 12'b000001010000; // addiu     //alusrcA应该是1
+            `OP_ADDIU : signsD <= 12'b000001010000; // addiu     //alusrcA应该�?1
             `OP_SLTI  : signsD <= 12'b000001010000;// slti
             `OP_SLTIU : signsD <= 12'b000001010000; // sltiu
             //logical type
@@ -106,7 +106,7 @@ module main_dec(
     end
    
     // Execute
-    flopenrc #(12) dff1E(clk,rst,flushE,ena,signsD,signsE);
+    flopenrc #(12) dff1E(clk,rst,flushE,~stallE,signsD,signsE);
     // Mem
     flopenr #(12) dff1M(clk,rst,ena,signsE,signsM);
     // Write
