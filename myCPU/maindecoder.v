@@ -1,20 +1,23 @@
 `timescale 1ns/1ps
 `include "defines.vh"
 module main_dec(
-    input wire clk,rst,
-    input wire [5:0]op,
-    input wire [5:0]funct,
-    input wire [4:0]rt,
-    
-    output wire regwriteW,regdstE,alusrcAE,alusrcBE,branchD,memWriteM,memtoRegW,jumpD,
-    output wire regwriteE,regwriteM,memtoRegE,memtoRegM,hilowriteM,jrD
+    input wire clk,rst,flushE,stallE,
+    input wire [31:0]instrD,
+    output wire regwriteW,regdstE,alusrcAE,alusrcBE,branchD,memWriteM,memtoRegW,
+    output wire regwriteE,regwriteM,memtoRegE,memtoRegM,hilowriteM,
+    output wire jumpD,balD,balE,balW,jalD,jalE,jalW,jrD,jrE,jrW
 );
     // Decoder
+    wire [5:0]op;
+    wire [5:0]funct;
+    wire [4:0]rt;
     reg [11:0]signsD;
     wire [11:0]signsE,signsW,signsM;
     wire ena;
 
-    assign ena = 1'b1;
+    assign op = instrD[31:26];
+    assign funct = instrD[5:0];
+    assign rt = instrD[20:16];
     assign regwriteW = signsW[6];
     assign regwriteE = signsE[6];
     assign regwriteM = signsM[6];
@@ -28,28 +31,44 @@ module main_dec(
     assign memtoRegM = signsM[1];
     assign jumpD = signsD[0];
     assign hilowriteM = signsM[11];
-    assign jrD = signsD[9];
+    assign balD=signsD[10];
+    assign balE=signsE[10];
+    assign balW=signsW[10];
+    assign jalD=signsD[8];
+    assign jalE=signsE[8];
+    assign jalW=signsW[8];
+    assign jrD=signsD[9];
+    assign jrE=signsE[9];
+    assign jrW=signsW[9];
+
+
+    assign ena = 1'b1;
 
     // signsD = {11hilowrite,10bal,9jr,8jal,7alusrcA,6regwrite,5regdst,,4alusrcB,3branch,2memWrite,1memtoReg,0jump}
     always @(*) begin
         case(op)
             `OP_R_TYPE:
                 case (funct)
-                    //Áßª‰ΩçÊåá‰ª§
-                    `FUN_SLL   : signsD <= 12'b000011100000;
-                    `FUN_SRL   : signsD <= 12'b000011100000;
-                    `FUN_SRA   : signsD <= 12'b000011100000;
-                    //ÈÄªËæëÂíåÁÆóÊúØÊåá‰ª§, to default
-                    // ÂàÜÊîØË∑≥ËΩ¨
+                    //?°Ï?????????°Ë
+                    `FUN_SLL   : signsD <= 12'b000011100000 ;
+                    `FUN_SRL   : signsD <= 12'b000011100000 ;
+                    `FUN_SRA   : signsD <= 12'b000011100000 ;
+                    //®¶???????????????????? default
+                    // ???????°¶????
                     `FUN_JR    : signsD <= 12'b001000000001;
-                    `FUN_JALR  : signsD <= 12'b001000000001;
-                    //Êï∞ÊçÆÁßªÂä®Êåá‰ª§
+                    `FUN_JALR  : signsD <= 12'b001001100000;
+                    //??°„????°Ï???°ß?????°Ë
                     `FUN_MTHI  : signsD <= 12'b100000000000;
                     `FUN_MTLO  : signsD <= 12'b100000000000;
-                    // r-typeÈªòËÆ§Ê†ºÂºè
+                    
+                    `FUN_DIV   : signsD <= 12'b100001100000;
+                    `FUN_DIVU  : signsD <= 12'b100001100000;
+                    `FUN_MULT  : signsD <= 12'b100001100000;
+                    `FUN_MULTU : signsD <= 12'b100001100000;
+                    //?????????r-type®¶????°Ë??°Ï????????°¶
                     default: signsD <= 12'b000001100000;
                 endcase
-            // ËÆøÂ≠òÊåá‰ª§
+            // ???????????°Ë
             `OP_LB    : signsD <= 12'b000001010010;
             `OP_LBU   : signsD <= 12'b000001010010;
             `OP_LH    : signsD <= 12'b000001010010;
@@ -60,7 +79,7 @@ module main_dec(
             `OP_SW    : signsD <= 12'b000000010110; // sw
             //arithmetic type
             `OP_ADDI  : signsD <= 12'b000001010000; // addi
-            `OP_ADDIU : signsD <= 12'b000001010000; // addiu     //alusrcAÂ∫îËØ•ÊòØ1
+            `OP_ADDIU : signsD <= 12'b000001010000; // addiu     //alusrcA?????????1
             `OP_SLTI  : signsD <= 12'b000001010000;// slti
             `OP_SLTIU : signsD <= 12'b000001010000; // sltiu
             //logical type
@@ -69,31 +88,30 @@ module main_dec(
             `OP_XORI  : signsD <= 12'b000001010000; // xori
             `OP_LUI   : signsD <= 12'b000001010000; // lui
             
-            // ÂàÜÊîØË∑≥ËΩ¨Êåá‰ª§
+            // ???????°¶?????????°Ë
             // alusrcA,regwrite,regdst,alusrcB,branch,memWrite,memtoReg,jump
-            // TODO ÊéßÂà∂‰ø°Âè∑ÊúâÂæÖÁ°ÆËÆ§
-            // `OP_BEQ   : signsD <= 12'b000000001000; // BEQ
-            // `OP_BNE   : signsD <= 12'b000000001000; // BNE
-            // `OP_BGTZ  : signsD <= 12'b000000001000; // BGTZ
-            // `OP_BLEZ  : signsD <= 12'b0000b00001000; // BLEZ  
-            // `OP_SPEC_B:     // BGEZ,BLTZ,BGEZAL,BLTZAL
-            //     case(rt)
-            //         `RT_BGEZ : signsD <= 12'b0000b00001000;
-            //         `RT_BLTZ : signsD <= 12'b0000b00001000;
-            //         `RT_BGEZAL: signsD <= 12'b0000b00001000;
-            //         `RT_BLTZAL: signsD <= 12'b0000b00001000;
-            //         default:;
-            //     endcase
+            // TODO ??°Ï????????°¶???????????°Ë
+            `OP_BEQ   : signsD <= 12'b000000001000; // BEQ
+            `OP_BNE   : signsD <= 12'b000000001000; // BNE
+            `OP_BGTZ  : signsD <= 12'b000000001000; // BGTZ
+            `OP_BLEZ  : signsD <= 12'b000000001000; // BLEZ  
+            `OP_SPEC_B:     // BGEZ,BLTZ,BGEZAL,BLTZAL
+                case(rt)
+                    `RT_BGEZ : signsD  <= 12'b000000001000;
+                    `RT_BLTZ : signsD  <= 12'b000000001000;
+                    `RT_BGEZAL: signsD <= 12'b010001001000;
+                    `RT_BLTZAL: signsD <= 12'b010001001000;
+                    default:;
+                endcase
             `OP_J     : signsD <= 12'b000000000001; // J     
             `OP_JAL   : signsD <= 12'b000101000000; 
-            `OP_JR    : signsD <= 12'b001000000001; // JR
-            `OP_JALR  : signsD <= 12'b001001100000; 
+
             default:;
         endcase
     end
    
     // Execute
-    flopenr #(12) dff1E(clk,rst,ena,signsD,signsE);
+    flopenrc #(12) dff1E(clk,rst,flushE,~stallE,signsD,signsE);
     // Mem
     flopenr #(12) dff1M(clk,rst,ena,signsE,signsM);
     // Write

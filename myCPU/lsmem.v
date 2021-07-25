@@ -30,7 +30,7 @@ always @(*) begin
         `OP_SB: begin
             data_sram_wdataM <= {sel_rd2M[7:0],sel_rd2M[7:0],sel_rd2M[7:0],sel_rd2M[7:0]};
             case(alu_resM[1:0])
-                // TODO 大端小端的问题
+                // TODO 大端小端的问�?
                 2'b00: data_sram_wenM <= 4'b1000;
                 2'b01: data_sram_wenM <= 4'b0100;
                 2'b10: data_sram_wenM <= 4'b0010;
@@ -38,6 +38,7 @@ always @(*) begin
                 default: ;
             endcase
         end
+        default : data_sram_wenM <= 4'b0000;
     endcase
 end
 

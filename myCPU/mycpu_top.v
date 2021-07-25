@@ -21,15 +21,15 @@ module mycpu_top(
     output [31:0] debug_wb_rf_wdata
 );
 
-    // 一个例子
+    // �?个例�?
 	// wire [31:0] pc;
-	// wire [31:0] instr;
-	wire memwrite;
-    wire [3:0]sel;
+	wire [31:0] instr;
+	// wire memwrite;
+    // wire [3:0]sel;
 	// wire [31:0] aluout, writedata, readdata;
-
+    
     datapath datapath(
-		.clk(clk),
+		.clk(~clk),
         .rst(~resetn), // to high active
         // instr
         .pc_now(inst_sram_addr),
@@ -47,9 +47,8 @@ module mycpu_top(
     assign inst_sram_wen = 4'b0;
     assign inst_sram_wdata = 32'b0;
     // assign inst_sram_addr = pc;
-    // assign instr = inst_sram_rdata;
+    assign instr = inst_sram_rdata;
 
-    // data
     assign data_sram_en = 1'b1;     //如果有data_en，就用data_en
     // assign data_sram_wen = {4{memwrite}};
     // assign data_sram_wen = sel;

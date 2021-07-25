@@ -22,16 +22,15 @@
 
 
 module hilo_reg(
-	input wire clk,rst,we,		// æ—¶é’Ÿ,å¤ä½,ä½¿èƒ½
+	input wire clk,rst,we,		// Ê±ÖÓ,¸´Î»,Ê¹ÄÜ
 	// input wire[31:0] hi,lo,
 	input wire[63:0] hilo_i,
 	
-	// TODO ä¸ºå•¥æ„Ÿè§‰å…·ä½“çš„hiloæ“ä½œç›´æ¥åœ¨alué‡Œé¢è¿›è¡Œäº†
+	// ¾ßÌåµÄhilo²Ù×÷Ö±½ÓÔÚaluÀïÃæ½øĞĞÁË
 	// output reg[31:0] hilo_res,
 	output reg[63:0] hilo  // hilo current data
     );
 	
-	// æ³¨æ„ï¼Œè¦ç›¸å¯¹å…·ä½“ä¼ å…¥çš„clkåˆ¤æ–­ï¼Œæ¯”å¦‚è¿™æ¬¡ä¼ å…¥çš„æ˜¯~clk
 	always @(negedge clk) begin
 		if(rst) begin
 			// hi_o <= `ZeroWord;
@@ -66,7 +65,7 @@ endmodule
 
 //    // assign hilo_ii = ( {64{~rst & we}} & hilo_i );
 
-//    // è¯»hiloé€»è¾‘ï¼›
+//    // ¶ÁhiloÂß¼­£»
 //    wire mfhi, mflo;
 //    assign mfhi = mfhi_loM[1];
 //    assign mflo = mfhi_loM[0];

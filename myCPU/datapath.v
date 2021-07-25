@@ -10,58 +10,62 @@ module datapath (
     
 );
 
-// ====================================== å˜é‡å®šä¹‰åŒºï¼Œevery part ======================================
+// ====================================== ±äÁ¿¶¨ÒåÇø£¬every part ======================================
 wire clear,ena;
-wire [63:0]hilo;
+wire [63:0]hilo;   // hilo_i;
+//wire div_ready,start_div,signed_div,hilo_in_signal;
+//wire [1:0] state_div;
 // F
 wire stallF;
-wire [31:0]pc_plus4F,pc_next,pc_next_jump;
+wire [31:0]pc_plus4F,pc_next,pc_next_jump,pc_next_jr,pc_next_j;
 // D
 wire stallD,flushD,forwardAD,forwardBD;
-wire pcsrcD,equalD,branchD,jumpD,jrD;
+wire pcsrcD,equalD,branchD,jumpD,jrD,balD,jalD;
 wire [4:0]rtD,rdD,rsD,saD;
 wire [31:0]pc_nowD,pc_plus4D,pc_branchD,rd1D,rd2D,rd1D_branch,rd2D_branch;
 wire [31:0]instrD,instrD_sl2,sign_immD,sign_immD_sl2;
 // E
-wire flushE,regdstE,alusrcAE,alusrcBE,regwriteE,memtoRegE;
+wire flushE,stallE,regdstE,alusrcAE,alusrcBE,regwriteE,memtoRegE,jrE,balE,jalE,stall_divE;
 wire [1:0]forwardAE,forwardBE;
-wire [4:0]rtE,rdE,rsE,saE,rd1_saE,reg_waddrE;
+wire [4:0]rtE,rdE,rsE,saE,reg_waddrE;
 wire [7:0]alucontrolE;
-wire [31:0]instrE,rd1E,rd2E,srcB,sign_immE;
-wire [31:0]pc_nowE,alu_resE,aluout_64E,sel_rd1E,sel_rd2E,sel_rd2M;
+wire [31:0]instrE,rd1E,rd2E,srcB,sign_immE,pc_plus4E,pc_plus8E,rd1_saE;
+wire [31:0]pc_nowE,alu_resE,sel_rd1E,sel_rd2E,alu_resE_real;
+wire [63:0]aluout_64E, div_result;
 // M
 wire memtoRegM,regwriteM,memWriteM;
 wire [4:0]reg_waddrM;
-wire [31:0]instrM,pc_nowM,alu_resM,aluout_64M,read_dataM;
+wire [31:0]instrM,pc_nowM,alu_resM,read_dataM,sel_rd2M;
+wire [63:0]aluout_64M, div_resultM;
+wire [31:0] if_addr;
 // W
-wire memtoRegW,regwriteW;
+wire memtoRegW,regwriteW,balW,jalW,hilowriteM;
 wire [4:0]reg_waddrW;
 wire [31:0]pc_nowW, alu_resW, wd3W, data_sram_rdataW;
 
 assign clear = 1'b0;
 assign ena = 1'b1;
-assign flushD = pcsrcD | jumpD;
+assign flushD = pcsrcD | jumpD | jalD | jrD;
 
 // ====================================== Fetch ======================================
-mux2 mux2_branch(
-    .a(pc_plus4F),
-    .b(pc_branchD),
-    .sel(pcsrcD),
-    .y(pc_next)
-    ); // æ³¨æ„ï¼Œè¿™é‡Œæ˜¯PC_nextæ˜¯æ²¿ç”¨çš„pc_plus4F
-
 mux2 mux2_jump(
-    .a(pc_next),
-    .b({pc_plus4D[31:28],instrD_sl2[27:0]}), // æ³¨æ„ï¼Œè¿™é‡Œæ˜¯Dé˜¶æ®µæ‰§è¡Œçš„pc_plus4D
-    .sel(jumpD),
-    .y(pc_next_jump)
+    .a(pc_next_jump),
+    .b(pc_next_jr), // Ñ¡ÔñÊÇjr»¹ÊÇµ¥´¿jumpµÄPC
+    .sel(jrD),
+    .y(pc_next_j)
 );
-
+mux3 mux3_branch(
+    .d0(pc_plus4F),
+    .d1(pc_branchD),
+    .d2(pc_next_j),
+    .sel({jumpD|jalD|jrD,pcsrcD}),
+    .y(pc_next)
+    ); // ÈıÑ¡Ò»£¬Õı³£PC£¬·ÖÖ§PC£¬Ìø×ªPC
 pc pc(
     .clk(clk),
     .rst(rst),
     .ena(~stallF),
-    .din(pc_next_jump),
+    .din(pc_next),
     .dout(pc_now)
 );
 
@@ -72,16 +76,18 @@ adder adder(
 );
 
 // ====================================== Decoder ======================================
-// TODO æ•°æ®å†’é™©åˆ†æï¼ˆè¿™é‡Œè¦ä¸è¦flushDéƒ½æ²¡é—®é¢˜ï¼Œå› ä¸ºè·³è½¬æŒ‡ä»¤åé¢éƒ½æ˜¯ä¸€ä¸ªnopï¼Œæ‰€ä»¥æ²¡å…³ç³»ï¼‰
-flopenrc DFF_instrD(clk,rst,flushD,~stallD,instrF,instrD);
+// ÑÓ³Ù²Û¼ÌĞøÖ´ĞĞ£¬²»Çå¿Õ
+flopenrc DFF_instrD   (clk,rst,clear,~stallD,instrF,instrD);
+flopenrc DFF_pc_nowD  (clk,rst,clear,~stallD,pc_now,pc_nowD);
 flopenrc DFF_pc_plus4D(clk,rst,clear,~stallD,pc_plus4F,pc_plus4D);
+
 
 main_dec main_dec(
     .clk(clk),
     .rst(rst),
-    .op(instrD[31:26]),
-    .funct(instrD[5:0]),
-    .rt(instrD[20:16]),
+    .flushE(flushE),
+    .stallE(stallE),
+    .instrD(instrD),
     
     .regwriteW(regwriteW),
     .regdstE(regdstE),
@@ -96,15 +102,22 @@ main_dec main_dec(
     .memtoRegE(memtoRegE),
     .memtoRegM(memtoRegM),
     .hilowriteM(hilowriteM),
-    .jrD(jrD)
+    .balD(balD),
+    .balE(balE),
+    .balW(balW),
+    .jalD(jalD),
+    .jalE(jalE),
+    .jalW(jalW),
+    .jrD(jrD),
+    .jrE(jrE)
 );
 
 alu_dec alu_decoder(
     .clk(clk), 
     .rst(rst),
-    .op(instrD[31:26]),
-    .funct(instrD[5:0]),
-
+    .flushE(flushE),
+    .stallE(stallE),
+    .instrD(instrD),
     .aluopE(alucontrolE)
 );
 
@@ -118,13 +131,13 @@ regfile regfile(
 	.we3(regwriteW),
 	.ra1(instrD[25:21]), 
     .ra2(instrD[20:16]),
-    .wa3(reg_waddrW), // å‰inåout
+    .wa3(reg_waddrW), // Ç°inºóout
 	.wd3(wd3W), 
 	.rd1(rd1D),
     .rd2(rd2D)
 );
 
-// jumpæŒ‡ä»¤æ‹“å±•
+// jumpÖ¸ÁîÍØÕ¹
 sl2 sl2_instr(
     .a(instrD),
     .y(instrD_sl2)
@@ -133,7 +146,6 @@ sl2 sl2_instr(
 signext sign_extend(
     .a(instrD[15:0]), 
     .type(instrD[29:28]),
-
     .y(sign_immD) 
 );
 
@@ -147,72 +159,136 @@ adder adder_branch(
     .b(pc_plus4D),
     .y(pc_branchD)
 );
+// Ìø×ªPC
+assign pc_next_jump={pc_plus4D[31:28],instrD_sl2[27:0]};
+assign pc_next_jr=rd1D_branch;
 
-// ******************* æ§åˆ¶å†’é™© *****************
-// åœ¨ regfile è¾“å‡ºåæ·»åŠ ä¸€ä¸ªåˆ¤æ–­ç›¸ç­‰çš„æ¨¡å—ï¼Œå³å¯æå‰åˆ¤æ–­ beqï¼Œä»¥å°†åˆ†æ”¯æŒ‡ä»¤æå‰åˆ°Decodeé˜¶æ®µï¼ˆé¢„æµ‹ï¼‰
+// ******************* ¿ØÖÆÃ°ÏÕ *****************
+// ÔÚ regfile Êä³öºóÌí¼ÓÒ»¸öÅĞ¶ÏÏàµÈµÄÄ£¿é£¬¼´¿ÉÌáÇ°ÅĞ¶Ï beq£¬ÒÔ½«·ÖÖ§Ö¸ÁîÌáÇ°µ½Decode½×¶Î£¨Ô¤²â£©
 mux2 #(32) mux2_forwardAD(rd1D,alu_resM,forwardAD,rd1D_branch);
 mux2 #(32) mux2_forwardBD(rd2D,alu_resM,forwardBD,rd2D_branch);
-// assign equalD = (rd1D_branch == rd2D_branch);
-assign equalD = (rd1D_branch == rd2D_branch) ? 1:0;
-assign pcsrcD = equalD & branchD;
+
+eqcmp pc_predict(
+    .a(rd1D_branch),
+    .b(rd2D_branch),
+    .op(instrD[31:26]),
+    .rt(rtD),
+    .y(equalD)
+);
+assign pcsrcD = equalD & (branchD|balD);
 
 // ====================================== Execute ======================================
+flopenrc #(32) DFF_rd1E     (clk,rst,flushE,~stallE,rd1D,rd1E);
+flopenrc #(32) DFF_rd2E     (clk,rst,flushE,~stallE,rd2D,rd2E);
+flopenrc #(32) DFF_sign_immE(clk,rst,flushE,~stallE,sign_immD,sign_immE);
+flopenrc #(5) DFF_rtE       (clk,rst,flushE,~stallE,rtD,rtE);
+flopenrc #(5) DFF_rdE       (clk,rst,flushE,~stallE,rdD,rdE);
+flopenrc #(5) DFF_rsE       (clk,rst,flushE,~stallE,rsD,rsE);
+flopenrc #(5) DFF_saE       (clk,rst,flushE,~stallE,saD,saE);
+flopenrc DFF_instrE         (clk,rst,flushE,~stallE,instrD,instrE);
+flopenrc DFF_pc_nowE        (clk,rst,flushE,~stallE,pc_nowD,pc_nowE);
+flopenrc DFF_pc_plus4E      (clk,rst,flushE,~stallE,pc_plus4D,pc_plus4E);
 
-flopenrc #(32) DFF_rd1E(clk,rst,flushE,ena,rd1D,rd1E);
-flopenrc #(32) DFF_rd2E(clk,rst,flushE,ena,rd2D,rd2E);
-flopenrc #(32) DFF_sign_immE(clk,rst,flushE,ena,sign_immD,sign_immE);
-flopenrc #(5) DFF_rtE(clk,rst,flushE,ena,rtD,rtE);
-flopenrc #(5) DFF_rdE(clk,rst,flushE,ena,rdD,rdE);
-flopenrc #(5) DFF_rsE(clk,rst,flushE,ena,rsD,rsE);
-flopenrc #(5) DFF_saE(clk,rst,flushE,ena,saD,saE);
-flopenrc DFF_instrE(clk,rst,flushD,ena,instrD,instrE);
-
-mux2 #(5) mux2_regDst(.a(rtE),.b(rdE),.sel(regdstE),.y(reg_waddrE));
-
-mux2 #(32) mux2_alusrcAE(.a(rd1E),.b({{27{1'b0}},saE}),.sel(alusrcAE),.y(rd1_saE));
-
-// ******************* æ•°æ®å†’é™© *****************
-// 00åŸç»“æœï¼Œ01å†™å›ç»“æœ_Wï¼Œ 10è®¡ç®—ç»“æœ_M
+// linkÖ¸Áî¶Ô¼Ä´æÆ÷µÄÑ¡Ôñ
+mux3 #(5) mux3_regDst(
+    .d0(rtE),
+    .d1(rdE),
+    .d2(5'b11111),
+    .sel({balE|jalE,regdstE}),
+    .y(reg_waddrE)
+    );
+mux2 #(32) mux2_alusrcAE(
+    .a(rd1E),
+    .b({{27{1'b0}},saE}),
+    .sel(alusrcAE),
+    .y(rd1_saE)
+    );
+// ******************* Êı¾İÃ°ÏÕ *****************
+// 00Ô­½á¹û£¬01Ğ´»Ø½á¹û_W£¬ 10¼ÆËã½á¹û_M
 mux3 #(32) mux3_forwardAE(rd1_saE,wd3W,alu_resM,forwardAE,sel_rd1E);
 mux3 #(32) mux3_forwardBE(rd2E,wd3W,alu_resM,forwardBE,sel_rd2E);
 mux2 mux2_aluSrc(.a(sel_rd2E),.b(sign_immE),.sel(alusrcBE),.y(srcB));
 
 alu alu(
+    .clk(clk),
+    .rst(rst),
     .a(sel_rd1E),
     .b(srcB),
     .aluop(alucontrolE),
     .hilo(hilo),
-
+//    .div_ready(div_ready), 
+//    .state_div(state_div),
+//    .start_div(start_div),
+//    .signed_div(signed_div),
+    .stall_div(stall_divE),
     .y(alu_resE),
     .aluout_64(aluout_64E),
     .overflow(),
-    .zero() // wire zero ==> branchè·³è½¬æ§åˆ¶ï¼ˆå·²ç»å‡çº§åˆ°*æ§åˆ¶å†’é™©*ï¼‰
+    .zero() // wire zero ==> branchÌø×ª¿ØÖÆ£¨ÒÑ¾­Éı¼¶µ½*¿ØÖÆÃ°ÏÕ*£©
 );
 
-// ====================================== Memory ======================================
-flopenrc DFF_alu_resM(clk,rst,clear,ena,alu_resE,alu_resM);
-flopenrc DFF_sel_rd2EM(clk,rst,clear,ena,sel_rd2E,sel_rd2M);
-flopenrc #(5) DFF_reg_waddrM(clk,rst,clear,ena,reg_waddrE,reg_waddrM);
-flopenrc DFF_instrM(clk,rst,clear,ena,instrE,instrM);
-flopenrc #(64) DFF_aluout_64M(clk,rst,clear,ena,aluout_64E,aluout_64M);
+adder pc_8(
+    .a(pc_plus4E),
+    .b(32'h4),
+    .y(pc_plus8E)
+);
 
-// Mé˜¶æ®µå†™å›hilo
+// linkÖ¸ÁîĞèÒª¶Ôalu_resE¶à½øĞĞÒ»´ÎÑ¡ÔñÔÙÏòºó´«
+mux2 alu_pc8(
+    .a(alu_resE),
+    .b(pc_plus8E),
+    .sel((balE | jalE) | jrE),
+    .y(alu_resE_real)
+);
+
+// TODO ÎªÉ¶divÒª·ÅÔÚdatapathÀïÃæ
+//assign hilo_in_signal=((alucontrolE ==`ALUOP_DIV) | (alucontrolE ==`ALUOP_DIVU))? 1:0;
+//mux2 #(64) mux2_hiloin(.a(aluout_64M),.b(div_resultM),.sel(hilo_in_signal),.y(hilo_i));
+//// ³ı·¨
+//flopenrc DFF_div_stallE      (clk,rst,clear,ena,stallE,div_stallE);
+//div mydiv(
+//	.clk(clk),
+//	.rst(rst),
+//	.ena(~div_stallE),
+//	.signed_div_i(signed_div), 
+//	.opdata1_i(sel_rd1E),
+//	.opdata2_i(srcB),
+	
+//	.state(state_div),
+//	.start_i(start_div),
+//	.annul_i(1'b0),
+//	.result_o(div_result),
+//	.ready_o(div_ready)
+//);
+
+// ====================================== Memory ======================================
+flopenrc DFF_alu_resM         (clk,rst,clear,ena,alu_resE_real,alu_resM);
+flopenrc DFF_sel_rd2M         (clk,rst,clear,ena,sel_rd2E,sel_rd2M);
+flopenrc #(5) DFF_reg_waddrM  (clk,rst,clear,ena,reg_waddrE,reg_waddrM);
+flopenrc DFF_instrM           (clk,rst,clear,ena,instrE,instrM);
+flopenrc #(64) DFF_aluout_64M (clk,rst,clear,ena,aluout_64E,aluout_64M);
+flopenrc DFF_pc_nowM          (clk,rst,clear,ena,pc_nowE,pc_nowM);
+//flopenrc #(64) DFF_divResultM(clk,rst,clear,ena,div_result,div_resultM);
+
+// ******************* wys£ºÊı¾İÒÆ¶¯Ïà¹ØÖ¸Áî *****************
+// M½×¶ÎĞ´»Øhilo
 hilo_reg hilo_reg(
 	.clk(clk),.rst(rst),.we(hilowriteM),
 	.hilo_i(aluout_64M),
 	// .hilo_res(hilo_res)
 	.hilo(hilo)  // hilo current data
-);
+    );
 
-assign data_sram_waddr = alu_resM;
+//assign data_sram_waddr = alu_resM;
+assign data_sram_waddr = (alu_resM[31:28] == 4'hB) ? {4'h1, alu_resM[27:0]} :
+                (alu_resM[31:28] == 4'h8) ? {4'h0, alu_resM[27:0]}: 32'b0;
 
-// è®¿å­˜è®¾ç½®
+// ·Ã´æÉèÖÃ
 lsmem lsmen(
     .opM(instrM[31:26]),
     .sel_rd2M(sel_rd2M), // writedata_4B
     .alu_resM(alu_resM),
     .data_sram_rdataM(data_sram_rdataM),
-
 
     .data_sram_wenM(data_sram_wenM),
     .data_sram_wdataM(data_sram_wdataM),
@@ -220,18 +296,31 @@ lsmem lsmen(
 );
 
 // ====================================== WriteBack ======================================
-flopenrc DFF_alu_resW(clk,rst,clear,ena,alu_resM,alu_resW);
-flopenrc DFF_data_sram_rdataW(clk,rst,clear,ena,read_dataM,data_sram_rdataW);
-flopenrc #(5) DFF_reg_waddrW(clk,rst,clear,ena,reg_waddrM,reg_waddrW);
+flopenrc DFF_alu_resW         (clk,rst,clear,ena,alu_resM,alu_resW);
+flopenrc DFF_data_sram_rdataW (clk,rst,clear,ena,read_dataM,data_sram_rdataW);
+flopenrc #(5) DFF_reg_waddrW  (clk,rst,clear,ena,reg_waddrM,reg_waddrW);
+flopenrc DFF_pc_nowW          (clk,rst,clear,ena,pc_nowM,pc_nowW);
+
 
 mux2 mux2_memtoReg(.a(alu_resW),.b(data_sram_rdataW),.sel(memtoRegW),.y(wd3W));
 
-// ******************* å†’é™©ä¿¡å·æ€»æ§åˆ¶ *****************
+// ******************* Ã°ÏÕĞÅºÅ×Ü¿ØÖÆ *****************
 hazard hazard(
-    regwriteE,regwriteM,regwriteW,memtoRegE,memtoRegM,branchD,jrD,
+    regwriteE,regwriteM,regwriteW,memtoRegE,memtoRegM,branchD,jrD,stall_divE,
     rsD,rtD,rsE,rtE,reg_waddrM,reg_waddrW,reg_waddrE,
-    stallF,stallD,flushE,forwardAD,forwardBD,
+    stallF,stallD,stallE,flushE,forwardAD,forwardBD,
     forwardAE, forwardBE
 );
-
+//always @(posedge clk) begin
+//    if(alucontrolE==`ALUOP_DIV || alucontrolE==`ALUOP_DIVU) begin
+////        $display("alucontrolE: %b",alucontrolE);
+////        $display("hi: %h", hilo_i[63:32]);
+////        $display("lo: %h", hilo_i[31:0]);
+//        $display("instrD: %b", instrD);
+//        $display("stallD: %b", stallD);
+//        $display("stallF: %b", stallF);
+//        $display("stallE: %b", stallE);
+//        $display("div_ready: %b",div_ready);
+//      end
+//    end
 endmodule

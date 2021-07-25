@@ -1,5 +1,6 @@
 `timescale 1ns/1ps
 // shift left 2bit
+// 左移两位
 module sl2 (
     input wire[31:0]a,
     input wire[31:0]y

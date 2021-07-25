@@ -23,3 +23,5 @@ datapath.v:     数据转移指令部分
             wire [31:0]hi_W,lo_W; // W回写阶段要写入HI，LO寄存器的值
             wire wehilo_E,wehilo_M,wehilo_W; //处于访存和回写阶段的指令是否要写入HI，LO寄存器
             最后的写回通用寄存器还没写，在最后的W阶段传回regfile的wd3处加一个多路选择器就行。
+            wire hilo_in_signal;  //hilo输入mux2片选信号
+            wire [63:0] hilo_i;
