@@ -1,4 +1,4 @@
-module dsramlike_interface (
+module d_sramlike_interface (
     input  wire clk,rst,
     input  wire longest_stall, // one pipline stall -->  one mem visit
     // sram
@@ -22,6 +22,7 @@ module dsramlike_interface (
     
     reg addr_succ; // 地址握手成功
     reg do_finish; // 完成读写操作
+    reg [31:0] data_rdata_temp;
 
     // sramlike
     assign data_req  = data_sram_en & ~addr_succ & ~do_finish;
@@ -40,7 +41,7 @@ module dsramlike_interface (
     assign data_sram_rdata = data_rdata_temp;
     assign d_stall = data_sram_en & ~do_finish;
 
-    // addr_succ
+    // signal of addr_succ
     always @(posedge clk) begin
         addr_succ <= rst ? 1'b0:
                      data_req & data_addr_ok & ~data_data_ok ? 1'b1 : // 判断顺序：先req，再addr_ok，再data_ok
@@ -48,7 +49,7 @@ module dsramlike_interface (
                      addr_succ;
     end
 
-    // do_finish
+    // signal of do_finish
     always @(posedge clk) begin
         do_finish <= rst ? 1'b0:
                      data_data_ok ? 1'b1:
@@ -56,8 +57,7 @@ module dsramlike_interface (
                      do_finish;
     end
 
-    // data
-    reg [31:0] data_rdata_temp;
+    // data of rdata
     always @(posedge clk) begin
         data_rdata_temp <=  rst ? 32'b0:
                             data_data_ok ? data_rdata:

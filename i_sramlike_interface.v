@@ -1,4 +1,4 @@
-module isramlike_interface (
+module i_sramlike_interface (
     input  wire clk,rst,
     input  wire longest_stall, // one pipline stall -->  one mem visit
 
@@ -23,8 +23,9 @@ module isramlike_interface (
     
     reg addr_succ; // 地址握手成功
     reg do_finish; // 完成读写操作
-
-    // sram
+    
+    // output信号处理
+    // sram like
     assign inst_req  = inst_sram_en & ~addr_succ & ~do_finish;
     assign inst_wr   = 1'b0;
     assign inst_size = 2'b10;
@@ -33,7 +34,7 @@ module isramlike_interface (
 
     // sram
     assign inst_sram_rdata = inst_rdata_temp;
-    assign d_stall = inst_sram_en & ~do_finish;
+    assign i_stall = inst_sram_en & ~do_finish;
 
     // addr_succ
     always @(posedge clk) begin
@@ -41,6 +42,11 @@ module isramlike_interface (
                      inst_req & inst_addr_ok & ~inst_data_ok ? 1'b1 : // 判断顺序：先req，再addr_ok，再data_ok
                      inst_data_ok ? 1'b0 :
                      addr_succ;
+        // BUG display addr_succ_refs
+        // $display("inst_req    :%b",inst_req);
+        // $display("inst_addr_ok:%b",inst_addr_ok);
+        // $display("inst_data_ok:%b",inst_data_ok);
+        // $display("addr_succ   :%b",addr_succ);
     end
 
     // do_finish

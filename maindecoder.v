@@ -5,16 +5,18 @@ module main_dec(
     input wire [31:0]instrD,
     output wire regwriteW,regdstE,alusrcAE,alusrcBE,branchD,memWriteM,memtoRegW,
     output wire regwriteE,regwriteM,memtoRegE,memtoRegM,hilowriteM,
-    output wire jumpD,balD,balE,balW,jalD,jalE,jalW,jrD,jrE,jrW
+    output wire jumpD,balD,balE,balW,jalD,jalE,jalW,jrD,jrE,jrW,
+    output wire memenD
 );
     // Decoder
+    wire ena;
     wire [5:0]op;
     wire [5:0]funct;
     wire [4:0]rt;
     reg [11:0]signsD;
     wire [11:0]signsE,signsW,signsM;
-    wire ena;
-
+    
+    assign ena = 1'b1;
     assign op = instrD[31:26];
     assign funct = instrD[5:0];
     assign rt = instrD[20:16];
@@ -40,10 +42,14 @@ module main_dec(
     assign jrD=signsD[9];
     assign jrE=signsE[9];
     assign jrW=signsW[9];
-
-
-    assign ena = 1'b1;
-
+    assign memenD= (op == `OP_LB  || 
+                    op == `OP_LBU || 
+                    op == `OP_LH  || 
+                    op == `OP_LHU || 
+                    op == `OP_LW  || 
+                    op == `OP_SB  || 
+                    op == `OP_SH  || 
+                    op == `OP_SW  );
     // signsD = {11hilowrite,10bal,9jr,8jal,7alusrcA,6regwrite,5regdst,,4alusrcB,3branch,2memWrite,1memtoReg,0jump}
     always @(*) begin
         case(op)

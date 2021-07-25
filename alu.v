@@ -1,5 +1,7 @@
 `timescale 1ns / 1ps
 `include "defines.vh"
+// Module Name: alu
+// Description: alu基本运算
 
 module alu(
     input clk,rst,
@@ -12,7 +14,7 @@ module alu(
     output reg start_div,signed_div,stall_div,
     output reg [31:0] y,
     output wire [63:0]aluout_64,
-    output wire overflow,
+    output reg overflow,
     output wire zero
     );
     reg [63:0] temp_aluout_64;
@@ -37,16 +39,23 @@ module alu(
 //    end
     
     always @(*) begin
-        stall_div <= 1'b0;
+        stall_div<= 1'b0;
+        overflow <= 0;
         case (aluop)
-            // arith op
-            `ALUOP_ADD   : y <= a + b;
+            //算术指令
+            `ALUOP_ADD   : begin
+               y <= a + b; 
+               overflow <= (a[31] == b[31]) & (y[31] != a[31]);
+            end
             `ALUOP_ADDU  : y <= a + b;
-            `ALUOP_ADDI  : y <= a + b;
+            `ALUOP_ADDI  : begin
+                y <= a + b;
+                overflow <= (a[31] == b[31]) & (y[31] != a[31]);
+            end
             `ALUOP_ADDIU : y <= a + b;
             `ALUOP_SUB   : y <= a - b;
             `ALUOP_SUBU  : y <= a - b;
-            // shift op
+            // TODO 这里是不是可以只用一个aluop
             `ALUOP_SLT   : y <= $signed(a) < $signed(b);
             `ALUOP_SLTU  : y <= a < b;
             `ALUOP_SLTI  :  begin//y <= a < b;
@@ -102,7 +111,7 @@ module alu(
                     stall_div <=1'b0;
                 end
             end
-            //logic op
+            //逻辑指令
             `ALUOP_AND   : y <= a & b;
             `ALUOP_OR    : y <= a | b;
             `ALUOP_NOR   : y <= ~ (a | b);
@@ -112,15 +121,17 @@ module alu(
             `ALUOP_XORI  : y <= a ^ b;
             `ALUOP_LUI   : y <={b[15:0],16'b0};
             
-            // shift op
+            // 移位指令
             `ALUOP_SLL   : y <= b << a[4:0];
             `ALUOP_SLLV: y <= b << a[4:0];
             `ALUOP_SRL: y <= b >> a[4:0];
             `ALUOP_SRLV: y <= b >> a[4:0];
             `ALUOP_SRA: y <= $signed(b) >>> a[4:0];
             `ALUOP_SRAV: y <= $signed(b) >>> a[4:0];
+            // 分支指令
+//            `ALUOP_BG
             
-            // move op
+            // 数据移动指令
             `ALUOP_MTHI: temp_aluout_64 <= {a,hilo[31:0]};
             `ALUOP_MTLO: temp_aluout_64 <= {hilo[63:32],a};
             `ALUOP_MFHI: y <= hilo[63:32];
@@ -129,6 +140,7 @@ module alu(
         endcase
     end
     
+    // TODO 
     div mydiv(
         .clk(clk),
         .rst(rst),

@@ -4,6 +4,7 @@ module datapath (
     input wire clk,rst,i_stall,d_stall,longest_stall,
     input wire [31:0]instrF,data_sram_rdataM,
 
+    output wire memenD,
     output wire [3:0] data_sram_wenM,
     output wire [31:0]pc_now,data_sram_waddr,
     output wire [31:0]data_sram_wdataM
@@ -107,7 +108,8 @@ main_dec main_dec(
     .jalE(jalE),
     .jalW(jalW),
     .jrD(jrD),
-    .jrE(jrE)
+    .jrE(jrE),
+    .memenD(memenD)
 );
 
 alu_dec alu_decoder(

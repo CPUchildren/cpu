@@ -1,7 +1,7 @@
 module mycpu_top(
-    input wire ext_int   ,   // interrupt,high active
-    input wire aclk      ,
-    input wire aresetn   ,   // low active
+    input wire [5:0] ext_int   ,   // interrupt,high active
+    input wire       aclk      ,
+    input wire       aresetn   ,   // low active
 
     //ar
     output [3 :0] arid   ,
@@ -46,10 +46,10 @@ module mycpu_top(
     output        bready ,
 
     //debug interface
-    input  [31:0] debug_wb_pc      ,
-    input  [3 :0] debug_wb_rf_wen  ,
-    input  [4 :0] debug_wb_rf_wnum ,
-    input  [31:0] debug_wb_rf_wdata
+    output [31:0] debug_wb_pc      ,
+    output [3 :0] debug_wb_rf_wen  ,
+    output [4 :0] debug_wb_rf_wnum ,
+    output [31:0] debug_wb_rf_wdata
 );
 
     // inst sram
@@ -58,7 +58,6 @@ module mycpu_top(
     wire [31:0] inst_sram_addr ;
     wire [31:0] inst_sram_wdata;
     wire [31:0] inst_sram_rdata;
-    
     // inst sram like
     wire        inst_req       ;
     wire        inst_wr        ;
@@ -68,14 +67,12 @@ module mycpu_top(
     wire [31:0] inst_rdata     ;
     wire        inst_addr_ok   ;
     wire        inst_data_ok   ;
-
     // data sram
     wire        data_sram_en   ;
     wire [3 :0] data_sram_wen  ;
     wire [31:0] data_sram_addr ;
     wire [31:0] data_sram_wdata;
     wire [31:0] data_sram_rdata;
-
     // data sram like
     wire        data_req       ;
     wire        data_wr        ;
@@ -85,14 +82,13 @@ module mycpu_top(
     wire [31:0] data_rdata     ;
     wire        data_addr_ok   ;
     wire        data_data_ok   ;
-
     // datapath
-	// wire memwrite;
-    wire longest_stall,i_stall,d_stall; // memwrite
+    wire memen; // ,memwrite
+    wire longest_stall,i_stall,d_stall;
     // wire [3:0]sel;
-    wire [31:0] instr;
-	// wire [31:0] pc, aluout, writedata, readdata;
+    wire [31:0] instr; // , pc, aluout, writedata, readdata;
     
+
     // instr
     assign inst_sram_en = 1'b1;     //如果有inst_en，就用inst_en
     assign inst_sram_wen = 4'b0;
@@ -101,7 +97,7 @@ module mycpu_top(
     assign instr = inst_sram_rdata;
 
     // data
-    assign data_sram_en = 1'b1;     //如果有data_en，就用data_en
+    assign data_sram_en = memen;     //如果有data_en，就用data_en
     // assign data_sram_wen = {4{memwrite}};
     // assign data_sram_addr = aluout;
     // assign data_sram_wdata = writedata;
@@ -114,8 +110,8 @@ module mycpu_top(
     assign debug_wb_rf_wdata    = datapath.wd3W;
 
     datapath datapath(
-		.clk(clk),
-        .rst(~resetn), // to high active
+		.clk(aclk),
+        .rst(~aresetn), // to high active
         // signals
         .i_stall(i_stall), // input
         .d_stall(d_stall), // input
@@ -126,6 +122,7 @@ module mycpu_top(
         .instrF(instr),
         
         // data
+        .memenD(memen),
         // .memWriteM(memwrite),
         .data_sram_wenM(data_sram_wen),
         .data_sram_waddr(data_sram_addr),
@@ -133,9 +130,9 @@ module mycpu_top(
         .data_sram_rdataM(data_sram_rdata)
 	);
 
-    dsramlike_interface dsramlike_interface(
+    d_sramlike_interface dsramlike_interface(
         .clk(aclk),
-        .rst(aresetn),
+        .rst(~aresetn),
         .longest_stall(longest_stall), // one pipline stall -->  one mem visit
         
         // data sram
@@ -157,9 +154,9 @@ module mycpu_top(
         .data_data_ok (data_data_ok )
     );
 
-    isramlike_interface isramlike_interface(
+    i_sramlike_interface isramlike_interface(
         .clk(aclk),
-        .rst(aresetn),
+        .rst(~aresetn),
         .longest_stall(longest_stall), // one pipline stall -->  one mem visit
 
         // sram
@@ -183,7 +180,7 @@ module mycpu_top(
 
     cpu_axi_interface cpu_axi_interface(
         .clk(aclk),
-        .resetn(aresetn), 
+        .resetn(aresetn),  // 注意，cpu_axi_interface的rst信号
 
         //inst sram-like 
         .inst_req     (inst_req     ),
@@ -251,7 +248,7 @@ module mycpu_top(
 
     //ascii
     instdec instdec(
-        .instr(inst_rdata)
+        .instr(instr)
     );
 
 endmodule

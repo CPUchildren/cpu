@@ -35,11 +35,11 @@ module hazard (
     assign jr_stall =(jrD & regwriteE & ((rsD == reg_waddrE)|(rtD == reg_waddrE))) | // 执行阶段阻塞，前面有写入的数据
                     (jrD & memtoRegM & ((rsD == reg_waddrM)|(rtD == reg_waddrM))); // 写回阶段阻塞
 
-    assign flushE = lwstall | branch_stall | jr_stall | i_stall | d_stall;
+    assign flushE = lwstall | branch_stall | jr_stall;
     assign stallF = lwstall | branch_stall | jr_stall | stall_divE | i_stall | d_stall;
     assign stallD = lwstall | branch_stall | jr_stall | stall_divE | i_stall | d_stall;
     assign stallE = stall_divE | i_stall | d_stall;
     assign stallM = i_stall | d_stall;
     assign stallW = i_stall | d_stall;
-    assign longest_stall = lwstall | branch_stall | jr_stall | stall_divE | i_stall | d_stall;
+    assign longest_stall = lwstall | branch_stall | jr_stall | stall_divE;
 endmodule

@@ -108,7 +108,7 @@ reg [31:0] do_addr_r;
 reg [31:0] do_wdata_r;
 wire data_back;
 
-assign inst_addr_ok = !do_req&&!data_req;
+assign inst_addr_ok = !do_req && !data_req;
 assign data_addr_ok = !do_req;
 always @(posedge clk) begin
     do_req     <= !resetn                       ? 1'b0 : 
