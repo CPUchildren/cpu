@@ -10,7 +10,7 @@ module lsmem (
     output reg [31:0]read_dataM
 );
     
-// TODO çœ‹çœ‹èƒ½ä¸èƒ½è½¬æ¢ä¸ºassignè¯­å¥
+// TODO ¿´¿´ÄÜ²»ÄÜ×ª»»ÎªassignÓï¾ä
 always @(*) begin
     case(opM)
         `OP_LW,`OP_LB,`OP_LBU,`OP_LH,`OP_LHU: data_sram_wenM <= 4'b0000;
@@ -23,14 +23,14 @@ always @(*) begin
             case(alu_resM[1:0])
                 2'b00: data_sram_wenM <= 4'b1100;
                 2'b10: data_sram_wenM <= 4'b0011;
-                // TODO å¼‚å¸¸å¤„ç†
+                // TODO Òì³£´¦Àí
                 default: ;
             endcase
         end
         `OP_SB: begin
             data_sram_wdataM <= {sel_rd2M[7:0],sel_rd2M[7:0],sel_rd2M[7:0],sel_rd2M[7:0]};
             case(alu_resM[1:0])
-                // TODO å¤§ç«¯å°ç«¯çš„é—®é¢˜
+                // TODO ´ó¶ËĞ¡¶ËµÄÎÊÌâ
                 2'b00: data_sram_wenM <= 4'b1000;
                 2'b01: data_sram_wenM <= 4'b0100;
                 2'b10: data_sram_wenM <= 4'b0010;

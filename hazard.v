@@ -1,36 +1,45 @@
 `timescale 1ns/1ps
 module hazard (
-    input wire regwriteE,regwriteM,regwriteW,memtoRegE,memtoRegM,branchD,jrD,stall_divE,
-    input wire [4:0]rsD,rtD,rsE,rtE,reg_waddrM,reg_waddrW,reg_waddrE,
-    output wire stallF,stallD,stallE,flushE,forwardAD,forwardBD,
+    input  wire regwriteE,regwriteM,regwriteW,
+    input  wire memtoRegE,memtoRegM,
+    input  wire branchD,jrD,
+    input  wire stall_divE,i_stall,d_stall,
+    input  wire [4:0]rsD,rtD,rsE,rtE,reg_waddrM,reg_waddrW,reg_waddrE,
+
+    output wire stallF,stallD,stallE,stallM,stallW,longest_stall,
+    output wire flushE,
+    output wire forwardAD,forwardBD,
     output wire[1:0] forwardAE, forwardBE
 );
     
-    // æ•°æ®å†’é™©
-    assign forwardAE =  ((rsE != 5'b0) & (rsE == reg_waddrM) & regwriteM) ? 2'b10: // å‰æ¨è®¡ç®—ç»“æœ
-                        ((rsE != 5'b0) & (rsE == reg_waddrW) & regwriteW) ? 2'b01: // å‰æ¨å†™å›ç»“æœ
-                        2'b00; // åŸç»“æœ
-    assign forwardBE =  ((rtE != 5'b0) & (rtE == reg_waddrM) & regwriteM) ? 2'b10: // å‰æ¨è®¡ç®—ç»“æœ
-                        ((rtE != 5'b0) & (rtE == reg_waddrW) & regwriteW) ? 2'b01: // å‰æ¨å†™å›ç»“æœ
-                        2'b00; // åŸç»“æœ 
+    // Êı¾İÃ°ÏÕ
+    assign forwardAE =  ((rsE != 5'b0) & (rsE == reg_waddrM) & regwriteM) ? 2'b10: // Ç°ÍÆ¼ÆËã½á¹û
+                        ((rsE != 5'b0) & (rsE == reg_waddrW) & regwriteW) ? 2'b01: // Ç°ÍÆĞ´»Ø½á¹û
+                        2'b00; // Ô­½á¹û
+    assign forwardBE =  ((rtE != 5'b0) & (rtE == reg_waddrM) & regwriteM) ? 2'b10: // Ç°ÍÆ¼ÆËã½á¹û
+                        ((rtE != 5'b0) & (rtE == reg_waddrW) & regwriteW) ? 2'b01: // Ç°ÍÆĞ´»Ø½á¹û
+                        2'b00; // Ô­½á¹û 
     
-    // æ§åˆ¶å†’é™©äº§ç”Ÿçš„å†™å†²çª 
-    // 0 åŸç»“æœï¼Œ 1 å†™å›ç»“æœ
+    // ¿ØÖÆÃ°ÏÕ²úÉúµÄĞ´³åÍ» 
+    // 0 Ô­½á¹û£¬ 1 Ğ´»Ø½á¹û
     assign forwardAD = (rsD != 5'b0) & (rsD == reg_waddrM) & regwriteM;
     assign forwardBD = (rtD != 5'b0) & (rtD == reg_waddrM) & regwriteM;
     
-    // åˆ¤æ–­ decode é˜¶æ®µ rs æˆ– rt çš„åœ°å€æ˜¯å¦æ˜¯ä¸Šä¸€ä¸ªlw æŒ‡ä»¤è¦å†™å…¥çš„åœ°å€rtEï¼›
-    wire lwstall,branch_stall,jr_stall; // æŒ‡ä»¤é˜»å¡ï¼šlwstall å–æ•°-ä½¿ç”¨å‹æ•°æ®å†’é™©
+    // ÅĞ¶Ï decode ½×¶Î rs »ò rt µÄµØÖ·ÊÇ·ñÊÇÉÏÒ»¸ölw Ö¸ÁîÒªĞ´ÈëµÄµØÖ·rtE£»
+    wire lwstall,branch_stall,jr_stall; // Ö¸Áî×èÈû£ºlwstall È¡Êı-Ê¹ÓÃĞÍÊı¾İÃ°ÏÕ
     // assign lwstall = ((rsD == rtE) | (rtD == rtE)) & memtoRegE;
     assign lwstall = ((rsD == rtE) | (rtD == rsE)) & memtoRegE;
-    assign branch_stall =   (branchD & regwriteE & ((rsD == reg_waddrE)|(rtD == reg_waddrE))) | // æ‰§è¡Œé˜¶æ®µé˜»å¡ï¼Œå‰é¢æœ‰å†™å…¥çš„æ•°æ®
-                            (branchD & memtoRegM & ((rsD == reg_waddrM)|(rtD == reg_waddrM))); // å†™å›é˜¶æ®µé˜»å¡
+    assign branch_stall =   (branchD & regwriteE & ((rsD == reg_waddrE)|(rtD == reg_waddrE))) | // Ö´ĞĞ½×¶Î×èÈû£¬Ç°ÃæÓĞĞ´ÈëµÄÊı¾İ
+                            (branchD & memtoRegM & ((rsD == reg_waddrM)|(rtD == reg_waddrM))); // Ğ´»Ø½×¶Î×èÈû
     
-    assign jr_stall =(jrD & regwriteE & ((rsD == reg_waddrE)|(rtD == reg_waddrE))) | // æ‰§è¡Œé˜¶æ®µé˜»å¡ï¼Œå‰é¢æœ‰å†™å…¥çš„æ•°æ®
-                    (jrD & memtoRegM & ((rsD == reg_waddrM)|(rtD == reg_waddrM))); // å†™å›é˜¶æ®µé˜»å¡
+    assign jr_stall =(jrD & regwriteE & ((rsD == reg_waddrE)|(rtD == reg_waddrE))) | // Ö´ĞĞ½×¶Î×èÈû£¬Ç°ÃæÓĞĞ´ÈëµÄÊı¾İ
+                    (jrD & memtoRegM & ((rsD == reg_waddrM)|(rtD == reg_waddrM))); // Ğ´»Ø½×¶Î×èÈû
 
-    assign stallF = lwstall | branch_stall | jr_stall | stall_divE;
-    assign stallD = lwstall | branch_stall | jr_stall | stall_divE;;
-    assign flushE = lwstall | branch_stall | jr_stall;
-    assign stallE = stall_divE;
+    assign flushE = lwstall | branch_stall | jr_stall | i_stall | d_stall;
+    assign stallF = lwstall | branch_stall | jr_stall | stall_divE | i_stall | d_stall;
+    assign stallD = lwstall | branch_stall | jr_stall | stall_divE | i_stall | d_stall;
+    assign stallE = stall_divE | i_stall | d_stall;
+    assign stallM = i_stall | d_stall;
+    assign stallW = i_stall | d_stall;
+    assign longest_stall = lwstall | branch_stall | jr_stall | stall_divE | i_stall | d_stall;
 endmodule

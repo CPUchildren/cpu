@@ -21,8 +21,8 @@ module isramlike_interface (
     input  wire        inst_data_ok 
 );
     
-    reg addr_succ; // 鍦板潃鎻℃墜鎴愬姛
-    reg do_finish; // 瀹屾垚璇诲啓鎿嶄綔
+    reg addr_succ; // 地址握手成功
+    reg do_finish; // 完成读写操作
 
     // sram
     assign inst_req  = inst_sram_en & ~addr_succ & ~do_finish;
@@ -38,7 +38,7 @@ module isramlike_interface (
     // addr_succ
     always @(posedge clk) begin
         addr_succ <= rst ? 1'b0:
-                     inst_req & inst_addr_ok & ~inst_data_ok ? 1'b1 : // 鍒ゆ柇椤哄簭锛氬厛req锛屽啀addr_ok锛屽啀data_ok
+                     inst_req & inst_addr_ok & ~inst_data_ok ? 1'b1 : // 判断顺序：先req，再addr_ok，再data_ok
                      inst_data_ok ? 1'b0 :
                      addr_succ;
     end
@@ -47,7 +47,7 @@ module isramlike_interface (
     always @(posedge clk) begin
         do_finish <= rst ? 1'b0:
                      inst_data_ok ? 1'b1:
-                     ~longest_stall ? 1'b0 : // cpu鏈樆濉炴椂
+                     ~longest_stall ? 1'b0 : // cpu未阻塞时
                      do_finish;
     end
 

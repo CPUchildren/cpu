@@ -1,6 +1,6 @@
 `timescale 1ns/1ps
 // shift left 2bit
-// Â∑¶Áßª‰∏§‰Ωç
+// ◊Û“∆¡ΩŒª
 module sl2 (
     input wire[31:0]a,
     input wire[31:0]y

@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
 `include "defines.vh"
 module main_dec(
-    input wire clk,rst,flushE,
+    input wire clk,rst,flushE,stallE,
     input wire [31:0]instrD,
     output wire regwriteW,regdstE,alusrcAE,alusrcBE,branchD,memWriteM,memtoRegW,
     output wire regwriteE,regwriteM,memtoRegE,memtoRegM,hilowriteM,
@@ -49,21 +49,21 @@ module main_dec(
         case(op)
             `OP_R_TYPE:
                 case (funct)
-                    //移位指令
                     `FUN_SLL   : signsD <= 12'b000011100000 ;
                     `FUN_SRL   : signsD <= 12'b000011100000 ;
                     `FUN_SRA   : signsD <= 12'b000011100000 ;
-                    //逻辑和算术指令 default
-                    // 分支跳转
                     `FUN_JR    : signsD <= 12'b001000000001;
                     `FUN_JALR  : signsD <= 12'b001001100000;
-                    //数据移动指令
                     `FUN_MTHI  : signsD <= 12'b100000000000;
                     `FUN_MTLO  : signsD <= 12'b100000000000;
-                    //简化，r-type默认控制信号
+                    
+                    `FUN_DIV   : signsD <= 12'b100001100000;
+                    `FUN_DIVU  : signsD <= 12'b100001100000;
+                    `FUN_MULT  : signsD <= 12'b100001100000;
+                    `FUN_MULTU : signsD <= 12'b100001100000;
                     default: signsD <= 12'b000001100000;
                 endcase
-            // 访存指令
+            // load/store
             `OP_LB    : signsD <= 12'b000001010010;
             `OP_LBU   : signsD <= 12'b000001010010;
             `OP_LH    : signsD <= 12'b000001010010;
@@ -74,7 +74,7 @@ module main_dec(
             `OP_SW    : signsD <= 12'b000000010110; // sw
             //arithmetic type
             `OP_ADDI  : signsD <= 12'b000001010000; // addi
-            `OP_ADDIU : signsD <= 12'b000001010000; // addiu     //alusrcA应该是1
+            `OP_ADDIU : signsD <= 12'b000001010000; // addiu     //alusrcA?????????1
             `OP_SLTI  : signsD <= 12'b000001010000;// slti
             `OP_SLTIU : signsD <= 12'b000001010000; // sltiu
             //logical type
@@ -83,9 +83,7 @@ module main_dec(
             `OP_XORI  : signsD <= 12'b000001010000; // xori
             `OP_LUI   : signsD <= 12'b000001010000; // lui
             
-            // 分支跳转指令
-            // alusrcA,regwrite,regdst,alusrcB,branch,memWrite,memtoReg,jump
-            // TODO 控制信号有待确认
+            // branch and jump
             `OP_BEQ   : signsD <= 12'b000000001000; // BEQ
             `OP_BNE   : signsD <= 12'b000000001000; // BNE
             `OP_BGTZ  : signsD <= 12'b000000001000; // BGTZ
@@ -106,7 +104,7 @@ module main_dec(
     end
    
     // Execute
-    flopenrc #(12) dff1E(clk,rst,flushE,ena,signsD,signsE);
+    flopenrc #(12) dff1E(clk,rst,flushE,~stallE,signsD,signsE);
     // Mem
     flopenr #(12) dff1M(clk,rst,ena,signsE,signsM);
     // Write
