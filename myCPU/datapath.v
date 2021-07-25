@@ -9,8 +9,8 @@ module datapath (
     output wire [31:0]data_sram_wdataM
     
 );
-
-// ====================================== 变量定义区，every part ======================================
+// new
+// ====================================== ????????????every part ======================================
 wire clear,ena;
 wire [63:0]hilo;   // hilo_i;
 //wire div_ready,start_div,signed_div,hilo_in_signal;
@@ -18,12 +18,16 @@ wire [63:0]hilo;   // hilo_i;
 // F
 wire stallF;
 wire [31:0]pc_plus4F,pc_next,pc_next_jump,pc_next_jr,pc_next_j;
+wire [7:0] exceptF;
 // D
+wire syscallD,breakD,eretD;
 wire stallD,flushD,forwardAD,forwardBD;
 wire pcsrcD,equalD,branchD,jumpD,jrD,balD,jalD;
 wire [4:0]rtD,rdD,rsD,saD;
 wire [31:0]pc_nowD,pc_plus4D,pc_branchD,rd1D,rd2D,rd1D_branch,rd2D_branch;
 wire [31:0]instrD,instrD_sl2,sign_immD,sign_immD_sl2;
+wire [7:0] exceptD;
+wire invalidD, is_in_delayslotD;
 // E
 wire flushE,stallE,regdstE,alusrcAE,alusrcBE,regwriteE,memtoRegE,jrE,balE,jalE,stall_divE;
 wire [1:0]forwardAE,forwardBE;
@@ -31,17 +35,38 @@ wire [4:0]rtE,rdE,rsE,saE,reg_waddrE;
 wire [7:0]alucontrolE;
 wire [31:0]instrE,rd1E,rd2E,srcB,sign_immE,pc_plus4E,pc_plus8E,rd1_saE;
 wire [31:0]pc_nowE,alu_resE,sel_rd1E,sel_rd2E,alu_resE_real;
-wire [63:0]aluout_64E, div_result;
+wire [63:0]div_result,aluout_64E;
+wire [7:0] exceptE;
+wire overflow, is_in_delayslotE;
 // M
 wire memtoRegM,regwriteM,memWriteM;
 wire [4:0]reg_waddrM;
 wire [31:0]instrM,pc_nowM,alu_resM,read_dataM,sel_rd2M;
-wire [63:0]aluout_64M, div_resultM;
+wire [63:0]div_resultM,aluout_64M;
 wire [31:0] if_addr;
+wire [7:0] exceptM;
+wire adelM,adesM;
+wire [31:0] newpcM;
+wire [31:0] excepttypeM;
+wire [31:0] bad_addr;
+wire is_in_delayslotM;
+wire [4:0]rdM;
 // W
 wire memtoRegW,regwriteW,balW,jalW,hilowriteM;
 wire [4:0]reg_waddrW;
 wire [31:0]pc_nowW, alu_resW, wd3W, data_sram_rdataW;
+
+//hazard
+wire[`RegBus] data_o;
+wire[`RegBus] count_o;
+wire[`RegBus] compare_o;
+wire[`RegBus] status_o;
+wire[`RegBus] cause_o;
+wire[`RegBus] epc_o;
+wire[`RegBus] config_o;
+wire[`RegBus] prid_o;
+wire[`RegBus] badvaddr;
+wire timer_int_o;
 
 assign clear = 1'b0;
 assign ena = 1'b1;
@@ -50,7 +75,7 @@ assign flushD = pcsrcD | jumpD | jalD | jrD;
 // ====================================== Fetch ======================================
 mux2 mux2_jump(
     .a(pc_next_jump),
-    .b(pc_next_jr), // 选择是jr还是单纯jump的PC
+    .b(pc_next_jr), // ?????jr???????jump??PC
     .sel(jrD),
     .y(pc_next_j)
 );
@@ -60,7 +85,7 @@ mux3 mux3_branch(
     .d2(pc_next_j),
     .sel({jumpD|jalD|jrD,pcsrcD}),
     .y(pc_next)
-    ); // 三选一，正常PC，分支PC，跳转PC
+    ); // ??????????PC?????PC?????PC
 pc pc(
     .clk(clk),
     .rst(rst),
@@ -75,11 +100,15 @@ adder adder(
     .y(pc_plus4F)
 );
 
+// 异常
+assign exceptF = (pc_now[1:0] == 2'b00) ? 8'b00000000 : 8'b10000000;
+
 // ====================================== Decoder ======================================
-// 延迟槽继续执行，不清空
+// ?????????У??????
 flopenrc DFF_instrD   (clk,rst,clear,~stallD,instrF,instrD);
 flopenrc DFF_pc_nowD  (clk,rst,clear,~stallD,pc_now,pc_nowD);
 flopenrc DFF_pc_plus4D(clk,rst,clear,~stallD,pc_plus4F,pc_plus4D);
+flopenrc #(8) DFF_exceptD(clk,rst,flushD,~stallD,exceptF,exceptD);
 
 
 main_dec main_dec(
@@ -109,7 +138,8 @@ main_dec main_dec(
     .jalE(jalE),
     .jalW(jalW),
     .jrD(jrD),
-    .jrE(jrE)
+    .jrE(jrE),
+    .invalid(invalidD)
 );
 
 alu_dec alu_decoder(
@@ -131,13 +161,13 @@ regfile regfile(
 	.we3(regwriteW),
 	.ra1(instrD[25:21]), 
     .ra2(instrD[20:16]),
-    .wa3(reg_waddrW), // 前in后out
+    .wa3(reg_waddrW), // ?in??out
 	.wd3(wd3W), 
 	.rd1(rd1D),
     .rd2(rd2D)
 );
 
-// jump指令拓展
+// jump??????
 sl2 sl2_instr(
     .a(instrD),
     .y(instrD_sl2)
@@ -159,9 +189,14 @@ adder adder_branch(
     .b(pc_plus4D),
     .y(pc_branchD)
 );
-// 跳转PC
+// ???PC
 assign pc_next_jump={pc_plus4D[31:28],instrD_sl2[27:0]};
 assign pc_next_jr=rd1D_branch;
+
+// 异常
+assign syscallD = (instrD[31:26] == 6'b000000 && instrD[5:0] == 6'b001100);
+assign breakD = (instrD[31:26] == 6'b000000 && instrD[5:0] == 6'b001101);
+assign eretD = (instrD == 32'b01000010000000000000000000011000);
 
 // ******************* 控制冒险 *****************
 // 在 regfile 输出后添加一个判断相等的模块，即可提前判断 beq，以将分支指令提前到Decode阶段（预测）
@@ -177,6 +212,8 @@ eqcmp pc_predict(
 );
 assign pcsrcD = equalD & (branchD|balD);
 
+assign is_in_delayslotD = (jumpD|jrD|jalD|branchD);
+
 // ====================================== Execute ======================================
 flopenrc #(32) DFF_rd1E     (clk,rst,flushE,~stallE,rd1D,rd1E);
 flopenrc #(32) DFF_rd2E     (clk,rst,flushE,~stallE,rd2D,rd2E);
@@ -188,6 +225,10 @@ flopenrc #(5) DFF_saE       (clk,rst,flushE,~stallE,saD,saE);
 flopenrc DFF_instrE         (clk,rst,flushE,~stallE,instrD,instrE);
 flopenrc DFF_pc_nowE        (clk,rst,flushE,~stallE,pc_nowD,pc_nowE);
 flopenrc DFF_pc_plus4E      (clk,rst,flushE,~stallE,pc_plus4D,pc_plus4E);
+flopenrc #(1) DFF_is_in_delayslotE(clk,rst,flushE,~stallE,is_in_delayslotD,is_in_delayslotE);
+
+// judge except instr
+flopenrc #(8) DFF_exceptE(clk,rst,flushE,ena,{exceptD[7],syscallD,breakD,eretD,invalidD,exceptD[2:0]},exceptE);
 
 // link指令对寄存器的选择
 mux3 #(5) mux3_regDst(
@@ -203,8 +244,8 @@ mux2 #(32) mux2_alusrcAE(
     .sel(alusrcAE),
     .y(rd1_saE)
     );
-// ******************* 数据冒险 *****************
-// 00原结果，01写回结果_W， 10计算结果_M
+// ******************* ??????? *****************
+// 00??????01д????_W?? 10??????_M
 mux3 #(32) mux3_forwardAE(rd1_saE,wd3W,alu_resM,forwardAE,sel_rd1E);
 mux3 #(32) mux3_forwardBE(rd2E,wd3W,alu_resM,forwardBE,sel_rd2E);
 mux2 mux2_aluSrc(.a(sel_rd2E),.b(sign_immE),.sel(alusrcBE),.y(srcB));
@@ -223,7 +264,7 @@ alu alu(
     .stall_div(stall_divE),
     .y(alu_resE),
     .aluout_64(aluout_64E),
-    .overflow(),
+    .overflow(overflow),
     .zero() // wire zero ==> branch跳转控制（已经升级到*控制冒险*）
 );
 
@@ -233,7 +274,7 @@ adder pc_8(
     .y(pc_plus8E)
 );
 
-// link指令需要对alu_resE多进行一次选择再向后传
+// link????????alu_resE????????????????
 mux2 alu_pc8(
     .a(alu_resE),
     .b(pc_plus8E),
@@ -241,10 +282,10 @@ mux2 alu_pc8(
     .y(alu_resE_real)
 );
 
-// TODO 为啥div要放在datapath里面
+// TODO ??div?????datapath????
 //assign hilo_in_signal=((alucontrolE ==`ALUOP_DIV) | (alucontrolE ==`ALUOP_DIVU))? 1:0;
 //mux2 #(64) mux2_hiloin(.a(aluout_64M),.b(div_resultM),.sel(hilo_in_signal),.y(hilo_i));
-//// 除法
+//// ????
 //flopenrc DFF_div_stallE      (clk,rst,clear,ena,stallE,div_stallE);
 //div mydiv(
 //	.clk(clk),
@@ -261,6 +302,19 @@ mux2 alu_pc8(
 //	.ready_o(div_ready)
 //);
 
+// 除法
+//div mydiv(
+//	.clk(clk),
+//	.rst(rst),
+//	.signed_div_i(signed_div), 
+//	.opdata1_i(sel_rd1E),
+//	.opdata2_i(srcB),
+//	.start_i(start_div),
+//	.annul_i(1'b0),
+//	.result_o(div_result),
+//	.ready_o(div_ready)
+//);
+
 // ====================================== Memory ======================================
 flopenrc DFF_alu_resM         (clk,rst,clear,ena,alu_resE_real,alu_resM);
 flopenrc DFF_sel_rd2M         (clk,rst,clear,ena,sel_rd2E,sel_rd2M);
@@ -268,10 +322,11 @@ flopenrc #(5) DFF_reg_waddrM  (clk,rst,clear,ena,reg_waddrE,reg_waddrM);
 flopenrc DFF_instrM           (clk,rst,clear,ena,instrE,instrM);
 flopenrc #(64) DFF_aluout_64M (clk,rst,clear,ena,aluout_64E,aluout_64M);
 flopenrc DFF_pc_nowM          (clk,rst,clear,ena,pc_nowE,pc_nowM);
-//flopenrc #(64) DFF_divResultM(clk,rst,clear,ena,div_result,div_resultM);
-
-// ******************* wys：数据移动相关指令 *****************
-// M阶段写回hilo
+flopenrc #(8) DFF_exceptM(clk,rst,clear,ena,{exceptE[7:3],overflow,exceptE[1:0]},exceptM);
+flopenrc #(1) DFF_is_in_delayslotM(clk,rst,clear,ena,is_in_delayslotE,is_in_delayslotM);
+flopenrc #(5) DFF_reg_rdM  (clk,rst,clear,ena,rdE,rdM);
+// ******************* wys??????????????? *****************
+// M???д??hilo
 hilo_reg hilo_reg(
 	.clk(clk),.rst(rst),.we(hilowriteM),
 	.hilo_i(aluout_64M),
@@ -283,16 +338,50 @@ hilo_reg hilo_reg(
 assign data_sram_waddr = (alu_resM[31:28] == 4'hB) ? {4'h1, alu_resM[27:0]} :
                 (alu_resM[31:28] == 4'h8) ? {4'h0, alu_resM[27:0]}: 32'b0;
 
-// 访存设置
+// ???????
 lsmem lsmen(
     .opM(instrM[31:26]),
     .sel_rd2M(sel_rd2M), // writedata_4B
     .alu_resM(alu_resM),
     .data_sram_rdataM(data_sram_rdataM),
+    .pcM(pc_nowM),
 
     .data_sram_wenM(data_sram_wenM),
     .data_sram_wdataM(data_sram_wdataM),
-    .read_dataM(read_dataM)
+    .read_dataM(read_dataM),
+    .adesM(adesM),
+    .adelM(adelM),
+    .bad_addr(bad_addr)
+);
+
+exception exp(rst,exceptM,adelM,adesM,status_o,cause_o,excepttypeM);
+
+cp0_reg CP0(
+    .clk(clk),
+	.rst(rst),
+
+	.we_i(1'b1),
+	.waddr_i(rdM),
+	.raddr_i(rdE),
+	.data_i(alu_resM),
+
+	.int_i(6'b000000),
+
+	.excepttype_i(excepttypeM),
+	.current_inst_addr_i(pc_nowM),
+	.is_in_delayslot_i(is_in_delayslotM),
+	.bad_addr_i(bad_addr),
+
+	.data_o(data_o),
+	.count_o(count_o),
+	.compare_o(compare_o),
+	.status_o(status_o),
+	.cause_o(cause_o),
+	.epc_o(epc_o),
+	.config_o(config_o),
+	.prid_o(prid_o),
+	.badvaddr(badvaddr),
+	.timer_int_o(timer_int_o)
 );
 
 // ====================================== WriteBack ======================================
@@ -304,12 +393,16 @@ flopenrc DFF_pc_nowW          (clk,rst,clear,ena,pc_nowM,pc_nowW);
 
 mux2 mux2_memtoReg(.a(alu_resW),.b(data_sram_rdataW),.sel(memtoRegW),.y(wd3W));
 
-// ******************* 冒险信号总控制 *****************
+// ******************* ??????????? *****************
 hazard hazard(
     regwriteE,regwriteM,regwriteW,memtoRegE,memtoRegM,branchD,jrD,stall_divE,
     rsD,rtD,rsE,rtE,reg_waddrM,reg_waddrW,reg_waddrE,
     stallF,stallD,stallE,flushE,forwardAD,forwardBD,
-    forwardAE, forwardBE
+    forwardAE, forwardBE,
+
+    instrM[31:26],
+    bad_addr,
+    newpcM
 );
 //always @(posedge clk) begin
 //    if(alucontrolE==`ALUOP_DIV || alucontrolE==`ALUOP_DIVU) begin

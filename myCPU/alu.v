@@ -14,7 +14,7 @@ module alu(
     output reg start_div,signed_div,stall_div,
     output reg [31:0] y,
     output wire [63:0]aluout_64,
-    output wire overflow,
+    output reg overflow,
     output wire zero
     );
     reg [63:0] temp_aluout_64;
@@ -39,12 +39,19 @@ module alu(
 //    end
     
     always @(*) begin
-        stall_div <= 1'b0;
+        stall_div<= 1'b0;
+        overflow <= 0;
         case (aluop)
             //ËãÊõÖ¸Áî
-            `ALUOP_ADD   : y <= a + b;
+            `ALUOP_ADD   : begin
+               y <= a + b; 
+               overflow <= (a[31] == b[31]) & (y[31] != a[31]);
+            end
             `ALUOP_ADDU  : y <= a + b;
-            `ALUOP_ADDI  : y <= a + b;
+            `ALUOP_ADDI  : begin
+                y <= a + b;
+                overflow <= (a[31] == b[31]) & (y[31] != a[31]);
+            end
             `ALUOP_ADDIU : y <= a + b;
             `ALUOP_SUB   : y <= a - b;
             `ALUOP_SUBU  : y <= a - b;

@@ -22,12 +22,12 @@ module alu_dec (
         case (op)
             `OP_R_TYPE:
                 case (funct)
-                    //¨¦¢ã?¨¨?'?????¡è
+                    //????
                     `FUN_AND   : aluopD <= `ALUOP_AND   ;
                     `FUN_OR    : aluopD <= `ALUOP_OR    ;
                     `FUN_XOR   : aluopD <= `ALUOP_XOR   ;
                     `FUN_NOR   : aluopD <= `ALUOP_NOR   ;
-                    //??-???¨¨????-?????¡è
+                    //??????
                     `FUN_SLT   : aluopD <= `ALUOP_SLT   ;
                     `FUN_SLTU  : aluopD <= `ALUOP_SLTU  ;
                     `FUN_ADD   : aluopD <= `ALUOP_ADD   ;
@@ -38,31 +38,31 @@ module alu_dec (
                     `FUN_MULTU : aluopD <= `ALUOP_MULTU ;
                     `FUN_DIV   : aluopD <= `ALUOP_DIV  ;
                     `FUN_DIVU  : aluopD <= `ALUOP_DIVU  ;
-                    //?¡ì?????????¡è
+                    //????
                     `FUN_SLL   : aluopD <= `ALUOP_SLL   ;
                     `FUN_SLLV  : aluopD <= `ALUOP_SLLV  ;
                     `FUN_SRL   : aluopD <= `ALUOP_SRL   ;
                     `FUN_SRLV  : aluopD <= `ALUOP_SRLV  ;
                     `FUN_SRA   : aluopD <= `ALUOP_SRA   ;
                     `FUN_SRAV  : aluopD <= `ALUOP_SRAV  ;
-                    // ??¡ã????¡ì???¡§?????¡è
+                    // ??????
                     `FUN_MFHI  : aluopD <= `ALUOP_MFHI  ;
                     `FUN_MFLO  : aluopD <= `ALUOP_MFLO  ;
                     `FUN_MTHI  : aluopD <= `ALUOP_MTHI  ;
                     `FUN_MTLO  : aluopD <= `ALUOP_MTLO  ;
                     default: aluopD <= 8'b00000000;
                 endcase
-            //¨¦¢ã?¨¨?'?????¡è
+            //????
             `OP_ANDI: aluopD <= `ALUOP_ANDI;
             `OP_XORI: aluopD <= `ALUOP_XORI;
             `OP_LUI : aluopD <= `ALUOP_LUI;
             `OP_ORI : aluopD <= `ALUOP_ORI;
-            //??-????????¡è
+            //????
             `OP_ADDI: aluopD <= `ALUOP_ADDI;
             `OP_ADDIU: aluopD <= `ALUOP_ADDIU;
             `OP_SLTI: aluopD <= `ALUOP_SLTI;
             `OP_SLTIU: aluopD <= `ALUOP_SLTIU;
-            // ¨¨??????????¡è
+            // ????
             `OP_LB:   aluopD <= `ALUOP_ADD;
             `OP_LBU:  aluopD <= `ALUOP_ADD;
             `OP_LH:   aluopD <= `ALUOP_ADD;
@@ -71,7 +71,7 @@ module alu_dec (
             `OP_SB:   aluopD <= `ALUOP_ADD;
             `OP_SH:   aluopD <= `ALUOP_ADD;
             `OP_SW:   aluopD <= `ALUOP_ADD;
-            // ????"?¨¨¡¤?¨¨???????¡è???D¨¦???????¡è?-???????¨¦??¨¨?????¨¨??alu
+            // ???????D??????????alu
             default: aluopD <= 8'b00000000;
         endcase
     end

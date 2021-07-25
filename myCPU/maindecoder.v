@@ -5,7 +5,8 @@ module main_dec(
     input wire [31:0]instrD,
     output wire regwriteW,regdstE,alusrcAE,alusrcBE,branchD,memWriteM,memtoRegW,
     output wire regwriteE,regwriteM,memtoRegE,memtoRegM,hilowriteM,
-    output wire jumpD,balD,balE,balW,jalD,jalE,jalW,jrD,jrE,jrW
+    output wire jumpD,balD,balE,balW,jalD,jalE,jalW,jrD,jrE,jrW,
+    output reg invalid
 );
     // Decoder
     wire [5:0]op;
@@ -46,29 +47,47 @@ module main_dec(
 
     // signsD = {11hilowrite,10bal,9jr,8jal,7alusrcA,6regwrite,5regdst,,4alusrcB,3branch,2memWrite,1memtoReg,0jump}
     always @(*) begin
+        invalid <= 1'b0;
         case(op)
             `OP_R_TYPE:
                 case (funct)
-                    //?¡ì?????????¡è
+                    //????
                     `FUN_SLL   : signsD <= 12'b000011100000 ;
+                    `FUN_SLLV  : signsD <= 12'b000001100000 ;
                     `FUN_SRL   : signsD <= 12'b000011100000 ;
+                    `FUN_SRLV  : signsD <= 12'b000001100000 ;
                     `FUN_SRA   : signsD <= 12'b000011100000 ;
-                    //¨¦???????????????????? default
-                    // ???????¡¦????
+                    `FUN_SRAV  : signsD <= 12'b000001100000 ;
+                    //???????
+                    `FUN_AND   : signsD <= 12'b000001100000;    //and
+                    `FUN_OR    : signsD <= 12'b000001100000;    //or
+                    `FUN_XOR   : signsD <= 12'b000001100000;   //xor
+                    `FUN_NOR   : signsD <= 12'b000001100000;   //nor
+                    `FUN_SLT   : signsD <= 12'b000001100000;   //slt
+                    `FUN_SLTU  : signsD <= 12'b000001100000;   //sltu
+                    `FUN_ADD   : signsD <= 12'b000001100000;   //add
+                    `FUN_ADDU  : signsD <= 12'b000001100000;   //addu
+                    `FUN_SUB   : signsD <= 12'b000001100000;   //sub
+                    `FUN_SUBU  : signsD <= 12'b000001100000;   //subu
+                    `FUN_MULT  : signsD <= 12'b100001100000;   //mult
+                    `FUN_MULTU : signsD <= 12'b100001100000;  //multu
+                    `FUN_DIV   : signsD <= 12'b100001100000;   //div
+                    `FUN_DIVU  : signsD <= 12'b100001100000;   //divu
+                    // ????
                     `FUN_JR    : signsD <= 12'b001000000001;
                     `FUN_JALR  : signsD <= 12'b001001100000;
-                    //??¡ã????¡ì???¡§?????¡è
+                    //??????
+                    `FUN_MFHI  : signsD <= 12'b000001100000;
+                    `FUN_MFLO  : signsD <= 12'b000001100000;
                     `FUN_MTHI  : signsD <= 12'b100000000000;
                     `FUN_MTLO  : signsD <= 12'b100000000000;
-                    
-                    `FUN_DIV   : signsD <= 12'b100001100000;
-                    `FUN_DIVU  : signsD <= 12'b100001100000;
-                    `FUN_MULT  : signsD <= 12'b100001100000;
-                    `FUN_MULTU : signsD <= 12'b100001100000;
-                    //?????????r-type¨¦????¡è??¡ì????????¡¦
-                    default: signsD <= 12'b000001100000;
+                    // TODO ???r-type?????????????????
+                    default: begin 
+                        signsD <= 12'b000001100000;
+                        invalid <= 1'b1;
+                    end
                 endcase
-            // ???????????¡è
+            // ????
             `OP_LB    : signsD <= 12'b000001010010;
             `OP_LBU   : signsD <= 12'b000001010010;
             `OP_LH    : signsD <= 12'b000001010010;
@@ -79,7 +98,7 @@ module main_dec(
             `OP_SW    : signsD <= 12'b000000010110; // sw
             //arithmetic type
             `OP_ADDI  : signsD <= 12'b000001010000; // addi
-            `OP_ADDIU : signsD <= 12'b000001010000; // addiu     //alusrcA?????????1
+            `OP_ADDIU : signsD <= 12'b000001010000; // addiu     //alusrcA???1
             `OP_SLTI  : signsD <= 12'b000001010000;// slti
             `OP_SLTIU : signsD <= 12'b000001010000; // sltiu
             //logical type
@@ -88,9 +107,9 @@ module main_dec(
             `OP_XORI  : signsD <= 12'b000001010000; // xori
             `OP_LUI   : signsD <= 12'b000001010000; // lui
             
-            // ???????¡¦?????????¡è
+            // ??????
             // alusrcA,regwrite,regdst,alusrcB,branch,memWrite,memtoReg,jump
-            // TODO ??¡ì????????¡¦???????????¡è
+            // TODO ????????
             `OP_BEQ   : signsD <= 12'b000000001000; // BEQ
             `OP_BNE   : signsD <= 12'b000000001000; // BNE
             `OP_BGTZ  : signsD <= 12'b000000001000; // BGTZ
@@ -101,12 +120,12 @@ module main_dec(
                     `RT_BLTZ : signsD  <= 12'b000000001000;
                     `RT_BGEZAL: signsD <= 12'b010001001000;
                     `RT_BLTZAL: signsD <= 12'b010001001000;
-                    default:;
+                    default: invalid <= 1'b1;
                 endcase
             `OP_J     : signsD <= 12'b000000000001; // J     
             `OP_JAL   : signsD <= 12'b000101000000; 
 
-            default:;
+            default: invalid <= 1'b1;
         endcase
     end
    
