@@ -8,12 +8,14 @@ module alu_dec (
     wire[5:0]op;
     wire[5:0]funct;
     wire[4:0]rt;
+    wire[4:0]rs;
     reg[7:0]aluopD;
 
     wire ena;
 
     assign op = instrD[31:26];
     assign funct = instrD[5:0];
+    assign rs = instrD[25:21];
     assign rt = instrD[20:16];
 
     assign ena = 1'b1;
@@ -71,6 +73,11 @@ module alu_dec (
             `OP_SB:   aluopD <= `ALUOP_ADD;
             `OP_SH:   aluopD <= `ALUOP_ADD;
             `OP_SW:   aluopD <= `ALUOP_ADD;
+            `OP_SPECIAL_INST:
+                case (rs)
+                    `RS_MFC0: aluopD <= `ALUOP_MFC0;
+                    default : aluopD <= 8'b00000000;
+                endcase
             // ???????D??????????alu
             default: aluopD <= 8'b00000000;
         endcase

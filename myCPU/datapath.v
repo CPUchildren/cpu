@@ -34,16 +34,16 @@ wire [1:0]forwardAE,forwardBE;
 wire [4:0]rtE,rdE,rsE,saE,reg_waddrE;
 wire [7:0]alucontrolE;
 wire [31:0]instrE,rd1E,rd2E,srcB,sign_immE,pc_plus4E,pc_plus8E,rd1_saE;
-wire [31:0]pc_nowE,alu_resE,sel_rd1E,sel_rd2E,alu_resE_real;
+wire [31:0]pc_nowE,alu_resE,sel_rd1E,sel_rd2E,alu_resE_real,cp0_data_oE;
 wire [63:0]div_result,aluout_64E;
 wire [7:0] exceptE;
 wire overflow, is_in_delayslotE;
 // M
 wire memtoRegM,regwriteM,memWriteM;
 wire [4:0]reg_waddrM;
-wire [31:0]instrM,pc_nowM,alu_resM,read_dataM,sel_rd2M;
+wire [31:0]instrM,pc_nowM,alu_resM,read_dataM,sel_rd2M,rd2M;
 wire [63:0]div_resultM,aluout_64M;
-wire [31:0] if_addr;
+wire [31:0]if_addr;
 wire [7:0] exceptM;
 wire adelM,adesM;
 wire [31:0] newpcM;
@@ -52,7 +52,7 @@ wire [31:0] bad_addr;
 wire is_in_delayslotM;
 wire [4:0]rdM;
 // W
-wire memtoRegW,regwriteW,balW,jalW,hilowriteM;
+wire memtoRegW,regwriteW,balW,jalW,hilowriteM,cp0writeM;
 wire [4:0]reg_waddrW;
 wire [31:0]pc_nowW, alu_resW, wd3W, data_sram_rdataW;
 
@@ -131,6 +131,7 @@ main_dec main_dec(
     .memtoRegE(memtoRegE),
     .memtoRegM(memtoRegM),
     .hilowriteM(hilowriteM),
+    .cp0writeM(cp0writeM),
     .balD(balD),
     .balE(balE),
     .balW(balW),
@@ -257,6 +258,7 @@ alu alu(
     .b(srcB),
     .aluop(alucontrolE),
     .hilo(hilo),
+    .cp0_data_o(cp0_data_oE),
 //    .div_ready(div_ready), 
 //    .state_div(state_div),
 //    .start_div(start_div),
@@ -360,10 +362,10 @@ cp0_reg CP0(
     .clk(clk),
 	.rst(rst),
 
-	.we_i(1'b1),
-	.waddr_i(rdM),
-	.raddr_i(rdE),
-	.data_i(alu_resM),
+	.we_i(cp0writeM),
+	.waddr_i(rdM),  // M阶段写入CP0
+	.raddr_i(rdE),  // E阶段读取CP0，这两步可以避免数据冒险处理
+	.data_i(sel_rd2M),
 
 	.int_i(6'b000000),
 
@@ -372,7 +374,7 @@ cp0_reg CP0(
 	.is_in_delayslot_i(is_in_delayslotM),
 	.bad_addr_i(bad_addr),
 
-	.data_o(data_o),
+	.data_o(cp0_data_oE),
 	.count_o(count_o),
 	.compare_o(compare_o),
 	.status_o(status_o),

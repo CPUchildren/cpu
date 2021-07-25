@@ -116,7 +116,9 @@
 
 // 特权指令
 `define EXE_ERET 32'b01000010000000000000000000011000
-
+`define OP_SPECIAL_INST 6'b010000
+`define RS_MTC0 5'b00100
+`define RS_MFC0 5'b00000
 // `define EXE_TEQ    6'b110100
 // `define EXE_TEQI   5'b01100
 // `define EXE_TGE    6'b110000

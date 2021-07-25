@@ -4,13 +4,15 @@
 // Description: alu»ù±¾ÔËËã
 
 module alu(
-    input clk,rst,
+    input  wire clk,rst,
+    input  wire div_ready, 
+    input  wire [1:0] state_div,
+    input  wire [7:0]aluop,
     input  wire [31:0]a,
     input  wire [31:0]b,
-    input  wire [7:0]aluop,
+    input  wire [31:0]cp0_data_o,
     input  wire  [63:0]hilo, // hilo source data
-    input wire div_ready, 
-    input wire [1:0] state_div,
+
     output reg start_div,signed_div,stall_div,
     output reg [31:0] y,
     output wire [63:0]aluout_64,
@@ -136,6 +138,7 @@ module alu(
             `ALUOP_MTLO: temp_aluout_64 <= {hilo[63:32],a};
             `ALUOP_MFHI: y <= hilo[63:32];
             `ALUOP_MFLO: y <= hilo[31:0];
+            `ALUOP_MFC0: y <= cp0_data_o;
             default      : y <= 32'b0;
         endcase
     end
