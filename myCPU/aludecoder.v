@@ -2,7 +2,9 @@
 module alu_dec (
     input wire clk, rst,flushE, stallE,
     input wire [31:0]instrD,
+    input wire [7:0] exceptM,
     output wire[7:0]aluopE
+    
 );  
 
     wire[5:0]op;
@@ -83,5 +85,5 @@ module alu_dec (
         endcase
     end
     // 
-    flopenrc #(8) dff2E(clk,rst,flushE,~stallE,aluopD,aluopE);
+    flopenrc #(8) dff2E(clk,rst,flushE|(|exceptM),~stallE,aluopD,aluopE);
 endmodule

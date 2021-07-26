@@ -2,6 +2,7 @@
 `include "defines.vh"
 module main_dec(
     input wire clk,rst,flushE,stallE,
+    input wire [7:0]exceptM,
     input wire [31:0]instrD,
     output wire regwriteW,regdstE,alusrcAE,alusrcBE,branchD,memWriteM,memtoRegW,
     output wire regwriteE,regwriteM,memtoRegE,memtoRegM,hilowriteM,cp0writeM,
@@ -84,6 +85,9 @@ module main_dec(
                     `FUN_MFLO  : signsD <= 13'b0000001100000;
                     `FUN_MTHI  : signsD <= 13'b0100000000000;
                     `FUN_MTLO  : signsD <= 13'b0100000000000;
+                    // 内陷指令
+                    `FUN_SYSCALL:signsD <= 13'b0000000000000;
+                    `FUN_BREAK  :signsD <= 13'b0000000000000;
                     // TODO ???r-type?????????????????
                     default: begin 
                         signsD <= 13'b0000001100000;
@@ -128,10 +132,9 @@ module main_dec(
             `OP_J     : signsD <= 13'b0000000000001; // J     
             `OP_JAL   : signsD <= 13'b0000101000000; 
             // 特权指令
-            // signsD = {12cp0write,11hilowrite,10bal,9jr,8jal,7alusrcA,6regwrite,5regdst,,4alusrcB,3branch,2memWrite,1memtoReg,0jump}
             `OP_SPECIAL_INST:
                 case (rs)
-                    `RS_MFC0: signsD <= 13'b0000001100000;
+                    `RS_MFC0: signsD <= 13'b0000001000000;
                     `RS_MTC0: signsD <= 13'b1000000000000;
                     default : signsD <= 13'b0000000000000;
                 endcase
@@ -140,10 +143,12 @@ module main_dec(
     end
    
     // Execute
-    flopenrc #(12) dff1E(clk,rst,flushE,~stallE,signsD,signsE);
+    flopenrc #(12) dff1E(clk,rst,flushE|(|exceptM),~stallE,signsD,signsE);
     // Mem
-    flopenr #(12) dff1M(clk,rst,ena,signsE,signsM);
+    // flopenr #(12) dff1M(clk,rst,ena,signsE,signsM);
+    flopenrc #(12) dff1M(clk,rst,(|exceptM),ena,signsE,signsM);
     // Write
-    flopenr #(12) dff1W(clk,rst,ena,signsM,signsW);    
+    // flopenr #(12) dff1W(clk,rst,ena,signsM,signsW);    
+    flopenrc #(12) dff1W(clk,rst,(|exceptM),ena,signsM,signsW);
     
 endmodule

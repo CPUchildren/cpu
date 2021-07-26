@@ -10,29 +10,34 @@ module hazard (
     input wire [31:0] cp0_epcM,
     output reg [31:0] newpcM
 );
-    
+    wire [1:0] forwardhiloE;
+    wire forwardcp0E;
     // ????
-    assign forwardAE =  ((rsE != 5'b0) & (rsE == reg_waddrM) & regwriteM) ? 2'b10: // 鍓嶆帹璁＄畻缁撴灉
-                        ((rsE != 5'b0) & (rsE == reg_waddrW) & regwriteW) ? 2'b01: // 鍓嶆帹鍐欏洖缁撴灉
-                        2'b00; // 鍘熺粨鏋?
-    assign forwardBE =  ((rtE != 5'b0) & (rtE == reg_waddrM) & regwriteM) ? 2'b10: // 鍓嶆帹璁＄畻缁撴灉
-                        ((rtE != 5'b0) & (rtE == reg_waddrW) & regwriteW) ? 2'b01: // 鍓嶆帹鍐欏洖缁撴灉
-                        2'b00; // 鍘熺粨鏋? 
+    assign forwardAE =  ((rsE != 5'b0) & (rsE == reg_waddrM) & regwriteM) ? 2'b10: // 前推计算结果
+                        ((rsE != 5'b0) & (rsE == reg_waddrW) & regwriteW) ? 2'b01: // 前推写回结果
+                        2'b00; // 原结??
+    assign forwardBE =  ((rtE != 5'b0) & (rtE == reg_waddrM) & regwriteM) ? 2'b10: // 前推计算结果
+                        ((rtE != 5'b0) & (rtE == reg_waddrW) & regwriteW) ? 2'b01: // 前推写回结果
+                        2'b00; // 原结?? 
     
+    // assign forwardhiloE=(hilo_weE==2'b00 & (hilo_weM==2'b10 | hilo_weM==2'b01 | hilo_weM==2'b11))?2'b01:
+    //                     (hilo_weE==2'b00 & (hilo_weW==2'b10 | hilo_weW==2'b01 | hilo_weW==2'b11))?2'b10:
+    //                     2'b00;
+    // assign forwardcp0E=((rdE!=0)&(rdE==rdM)&(cp0weM))?1'b1:1'b0;
     // ?????????? 
     // 0 ???? 1 ????
     assign forwardAD = (rsD != 5'b0) & (rsD == reg_waddrM) & regwriteM;
     assign forwardBD = (rtD != 5'b0) & (rtD == reg_waddrM) & regwriteM;
     
-    // 鍒ゆ柇 decode 闃舵 rs 鎴? rt 鐨勫湴鍧?鏄惁鏄笂涓?涓猯w 鎸囦护瑕佸啓鍏ョ殑鍦板潃rtE锛?
-    wire lwstall,branch_stall,jr_stall; // 鎸囦护闃诲锛歭wstall 鍙栨暟-浣跨敤鍨嬫暟鎹啋闄?
+    // 判断 decode 阶??? rs ?? rt 的地????否是上???个lw 指令要写入的地址rtE??
+    wire lwstall,branch_stall,jr_stall; // 指令阻???：lwstall 取数-使用型数??冒???
     // assign lwstall = ((rsD == rtE) | (rtD == rtE)) & memtoRegE;
     assign lwstall = ((rsD == rtE) | (rtD == rsE)) & memtoRegE;
-    assign branch_stall =   (branchD & regwriteE & ((rsD == reg_waddrE)|(rtD == reg_waddrE))) | // 鎵ц闃舵闃诲锛屽墠闈㈡湁鍐欏叆鐨勬暟鎹?
-                            (branchD & memtoRegM & ((rsD == reg_waddrM)|(rtD == reg_waddrM))); // 鍐欏洖闃舵闃诲
+    assign branch_stall =   (branchD & regwriteE & ((rsD == reg_waddrE)|(rtD == reg_waddrE))) | // 执???阶段阻塞，前面有写入的数???
+                            (branchD & memtoRegM & ((rsD == reg_waddrM)|(rtD == reg_waddrM))); // 写回阶???阻??
     
-    assign jr_stall =(jrD & regwriteE & ((rsD == reg_waddrE)|(rtD == reg_waddrE))) | // 鎵ц闃舵闃诲锛屽墠闈㈡湁鍐欏叆鐨勬暟鎹?
-                    (jrD & memtoRegM & ((rsD == reg_waddrM)|(rtD == reg_waddrM))); // 鍐欏洖闃舵闃诲
+    assign jr_stall =(jrD & regwriteE & ((rsD == reg_waddrE)|(rtD == reg_waddrE))) | // 执???阶段阻塞，前面有写入的数???
+                    (jrD & memtoRegM & ((rsD == reg_waddrM)|(rtD == reg_waddrM))); // 写回阶???阻??
 
     assign stallF = lwstall | branch_stall | jr_stall | stall_divE;
     assign stallD = lwstall | branch_stall | jr_stall | stall_divE;
@@ -67,7 +72,7 @@ module hazard (
                     newpcM <= 32'hBFC00380;
                 end
                 32'h0000000e: begin
-                    newpcM <= cp0_epcM;
+                    newpcM <= cp0_epcM + 32'h00000004;
                 end
                 default : ;
             endcase
