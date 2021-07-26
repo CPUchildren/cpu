@@ -7,7 +7,7 @@ module hazard (
     output wire stallF,stallD,stallE,stallM,stallW,longest_stall,
     output wire flushE,
     output wire forwardAD,forwardBD,
-    output wire [1 :0] forwardAE, forwardBE
+    output wire [1 :0] forwardAE, forwardBE,
     // 异常
     input  wire [5 :0] opM,
     input  wire [31:0] excepttypeM,
@@ -32,19 +32,19 @@ module hazard (
     wire lwstall,branch_stall,jr_stall; // 指令阻塞：lwstall 取数-使用型数据冒险
     // assign lwstall = ((rsD == rtE) | (rtD == rtE)) & memtoRegE;
     assign lwstall = ((rsD == rtE) | (rtD == rsE)) & memtoRegE;
-     assign branch_stall =  (branchD & regwriteE & ((rsD == reg_waddrE)|(rtD == reg_waddrE))) | // 执行阶段阻塞，前面有写入的数据
+    assign branch_stall =  (branchD & regwriteE & ((rsD == reg_waddrE)|(rtD == reg_waddrE))) | // 执行阶段阻塞，前面有写入的数据
                             (branchD & memtoRegM & ((rsD == reg_waddrM)|(rtD == reg_waddrM))); // 写回阶段阻塞
     
     assign jr_stall =(jrD & regwriteE & ((rsD == reg_waddrE)|(rtD == reg_waddrE))) | // 执行阶段阻塞，前面有写入的数据
                     (jrD & memtoRegM & ((rsD == reg_waddrM)|(rtD == reg_waddrM))); // 写回阶段阻塞
+    assign longest_stall = stall_divE | i_stall | d_stall;
 
-    assign flushE = lwstall | branch_stall | jr_stall;
-    assign stallF = lwstall | branch_stall | jr_stall | stall_divE | i_stall | d_stall;
-    assign stallD = lwstall | branch_stall | jr_stall | stall_divE | i_stall | d_stall;
-    assign stallE = stall_divE | i_stall | d_stall;
-    assign stallM = i_stall | d_stall;
-    assign stallW = i_stall | d_stall;
-    assign longest_stall = lwstall | branch_stall | jr_stall | stall_divE;
+    assign flushE = (lwstall | branch_stall | jr_stall) & ~longest_stall;
+    assign stallF = lwstall | branch_stall | jr_stall | longest_stall;
+    assign stallD = lwstall | branch_stall | jr_stall | longest_stall;
+    assign stallE = longest_stall; // i_stall | 取指阶段是否需要不阻塞E_M_W
+    assign stallM = i_stall | d_stall; 
+    assign stallW = i_stall | d_stall;    
 
     always @(*) begin
         if(excepttypeM != 32'b0) begin

@@ -52,6 +52,7 @@ module mycpu_top(
     output [31:0] debug_wb_rf_wdata
 );
 
+    // variable define
     // inst sram
     wire        inst_sram_en   ;
     wire [3 :0] inst_sram_wen  ;
@@ -88,14 +89,15 @@ module mycpu_top(
     // wire [3:0]sel;
     wire [31:0] instr; // , pc, aluout, writedata, readdata;
     
-
+    
+    // variable assignment
     // instr
     assign inst_sram_en = 1'b1;     //如果有inst_en，就用inst_en
     assign inst_sram_wen = 4'b0;
     // assign inst_sram_addr = pc;
     assign inst_sram_wdata = 32'b0;
     assign instr = inst_sram_rdata;
-
+    
     // data
     assign data_sram_en = memen;     //如果有data_en，就用data_en
     // assign data_sram_wen = {4{memwrite}};
@@ -105,10 +107,12 @@ module mycpu_top(
 
     // debug
     assign debug_wb_pc          = datapath.pc_nowW;
-    assign debug_wb_rf_wen      = {4{datapath.regwriteW}}; 
+    assign debug_wb_rf_wen      = {4{datapath.regwriteW & ~datapath.stallW}}; 
     assign debug_wb_rf_wnum     = datapath.reg_waddrW;
     assign debug_wb_rf_wdata    = datapath.wd3W;
 
+    
+    // sub module
     datapath datapath(
 		.clk(aclk),
         .rst(~aresetn), // to high active
@@ -122,7 +126,7 @@ module mycpu_top(
         .instrF(instr),
         
         // data
-        .memenD(memen),
+        .memenM(memen),
         // .memWriteM(memwrite),
         .data_sram_wenM(data_sram_wen),
         .data_sram_waddr(data_sram_addr),
@@ -180,7 +184,7 @@ module mycpu_top(
 
     cpu_axi_interface cpu_axi_interface(
         .clk(aclk),
-        .resetn(aresetn),  // 注意，cpu_axi_interface的rst信号
+        .resetn(aresetn),  // 注意，cpu_axi_interface的rst信号,low active
 
         //inst sram-like 
         .inst_req     (inst_req     ),

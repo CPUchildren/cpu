@@ -1,22 +1,23 @@
 `timescale 1ns/1ps
 `include "defines.vh"
 module main_dec(
-    input wire clk,rst,flushE,stallE,
+    input wire clk,rst,flushE,stallE,stallM,stallW,
     input wire [31:0]instrD,
     output wire regwriteW,regdstE,alusrcAE,alusrcBE,branchD,memWriteM,memtoRegW,
     output wire regwriteE,regwriteM,memtoRegE,memtoRegM,hilowriteM,cp0writeM,
-    output wire jumpD,balD,balE,balW,jalD,jalE,jalW,jrD,jrE,jrW,
+    output wire jumpD,balD,balE,balW,jalD,jalE,jalW,jrD,jrE,jrW,memenM,
     output reg invalid
 );
     // Decoder
-    wire ena;
+    wire clear,ena;
     wire [5 :0]op;
     wire [5 :0]funct;
     wire [4 :0]rt;
     wire [4 :0]rs;
-    reg  [12:0]signsD;
-    wire [12:0]signsE,signsW,signsM;
+    reg  [13:0]signsD;
+    wire [13:0]signsE,signsW,signsM;
     
+    assign clear = 1'b0;
     assign ena = 1'b1;
     assign op = instrD[31:26];
     assign funct = instrD[5:0];
@@ -35,8 +36,8 @@ module main_dec(
     assign memtoRegE = signsE[1];
     assign memtoRegM = signsM[1];
     assign jumpD = signsD[0];
-    assign hilowriteM = signsM[11]; // hilo Eè¯»å–ï¼ŒMå†™å›ï¼Œé¿å…æ•°æ®å†’é™©å¤„ç†
-    assign cp0writeM = signsM[12];  // CP0  Eè¯»å–ï¼ŒMå†™å›ï¼Œé¿å…æ•°æ®å†’é™©å¤„ç†
+    assign hilowriteM = signsM[11]; // hilo E¶ÁÈ¡£¬MĞ´»Ø£¬±ÜÃâÊı¾İÃ°ÏÕ´¦Àí
+    assign cp0writeM = signsM[12];  // CP0  E¶ÁÈ¡£¬MĞ´»Ø£¬±ÜÃâÊı¾İÃ°ÏÕ´¦Àí
     assign balD=signsD[10];
     assign balE=signsE[10];
     assign balW=signsW[10];
@@ -46,108 +47,99 @@ module main_dec(
     assign jrD=signsD[9];
     assign jrE=signsE[9];
     assign jrW=signsW[9];
-    assign memenD= (op == `OP_LB  || 
-                    op == `OP_LBU || 
-                    op == `OP_LH  || 
-                    op == `OP_LHU || 
-                    op == `OP_LW  || 
-                    op == `OP_SB  || 
-                    op == `OP_SH  || 
-                    op == `OP_SW  );
+    assign memenM=signsM[13];
     
-    // signsD = {12cp0write,11hilowrite,10bal,9jr,8jal,7alusrcA,6regwrite,5regdst,,4alusrcB,3branch,2memWrite,1memtoReg,0jump}
+    // signsD = {13memen,12cp0write,11hilowrite,10bal,9jr,8jal,7alusrcA,6regwrite,5regdst,,4alusrcB,3branch,2memWrite,1memtoReg,0jump}
     always @(*) begin
         invalid <= 1'b0;
         case(op)
             `OP_R_TYPE:
                 case (funct)
 
-                    `FUN_SLL   : signsD <= 13'b0000011100000 ;
-                    `FUN_SLLV  : signsD <= 13'b0000001100000 ;
-                    `FUN_SRL   : signsD <= 13'b0000011100000 ;
-                    `FUN_SRLV  : signsD <= 13'b0000001100000 ;
-                    `FUN_SRA   : signsD <= 13'b0000011100000 ;
-                    `FUN_SRAV  : signsD <= 13'b0000001100000 ;
+                    `FUN_SLL   : signsD <= 14'b00000011100000 ;
+                    `FUN_SLLV  : signsD <= 14'b00000001100000 ;
+                    `FUN_SRL   : signsD <= 14'b00000011100000 ;
+                    `FUN_SRLV  : signsD <= 14'b00000001100000 ;
+                    `FUN_SRA   : signsD <= 14'b00000011100000 ;
+                    `FUN_SRAV  : signsD <= 14'b00000001100000 ;
 
-                    `FUN_AND   : signsD <= 13'b0000001100000;    //and
-                    `FUN_OR    : signsD <= 13'b0000001100000;    //or
-                    `FUN_XOR   : signsD <= 13'b0000001100000;   //xor
-                    `FUN_NOR   : signsD <= 13'b0000001100000;   //nor
-                    `FUN_SLT   : signsD <= 13'b0000001100000;   //slt
-                    `FUN_SLTU  : signsD <= 13'b0000001100000;   //sltu
-                    `FUN_ADD   : signsD <= 13'b0000001100000;   //add
-                    `FUN_ADDU  : signsD <= 13'b0000001100000;   //addu
-                    `FUN_SUB   : signsD <= 13'b0000001100000;   //sub
-                    `FUN_SUBU  : signsD <= 13'b0000001100000;   //subu
-                    `FUN_MULT  : signsD <= 13'b0100001100000;   //mult
-                    `FUN_MULTU : signsD <= 13'b0100001100000;  //multu
-                    `FUN_DIV   : signsD <= 13'b0100001100000;   //div
-                    `FUN_DIVU  : signsD <= 13'b0100001100000;   //divu
+                    `FUN_AND   : signsD <= 14'b00000001100000;    //and
+                    `FUN_OR    : signsD <= 14'b00000001100000;    //or
+                    `FUN_XOR   : signsD <= 14'b00000001100000;   //xor
+                    `FUN_NOR   : signsD <= 14'b00000001100000;   //nor
+                    `FUN_SLT   : signsD <= 14'b00000001100000;   //slt
+                    `FUN_SLTU  : signsD <= 14'b00000001100000;   //sltu
+                    `FUN_ADD   : signsD <= 14'b00000001100000;   //add
+                    `FUN_ADDU  : signsD <= 14'b00000001100000;   //addu
+                    `FUN_SUB   : signsD <= 14'b00000001100000;   //sub
+                    `FUN_SUBU  : signsD <= 14'b00000001100000;   //subu
+                    `FUN_MULT  : signsD <= 14'b00100001100000;   //mult
+                    `FUN_MULTU : signsD <= 14'b00100001100000;  //multu
+                    `FUN_DIV   : signsD <= 14'b00100001100000;   //div
+                    `FUN_DIVU  : signsD <= 14'b00100001100000;   //divu
                     
-                    `FUN_JR    : signsD <= 13'b0001000000001;
-                    `FUN_JALR  : signsD <= 13'b0001001100000;
-                    `FUN_MFHI  : signsD <= 13'b0000001100000;
-                    `FUN_MFLO  : signsD <= 13'b0000001100000;
-                    `FUN_MTHI  : signsD <= 13'b0100000000000;
-                    `FUN_MTLO  : signsD <= 13'b0100000000000;
-                    // TODO ???r-type?????????????????
+                    `FUN_JR    : signsD <= 14'b00001000000001;
+                    `FUN_JALR  : signsD <= 14'b00001001100000;
+                    `FUN_MFHI  : signsD <= 14'b00000001100000;
+                    `FUN_MFLO  : signsD <= 14'b00000001100000;
+                    `FUN_MTHI  : signsD <= 14'b00100000000000;
+                    `FUN_MTLO  : signsD <= 14'b00100000000000;
                     default: begin 
-                        signsD <= 13'b0000001100000;
+                        signsD <= 14'b00000001100000;
                         invalid <= 1'b1;
                     end
                 endcase
             // load/store
-            `OP_LB    : signsD <= 13'b0000001010010;
-            `OP_LBU   : signsD <= 13'b0000001010010;
-            `OP_LH    : signsD <= 13'b0000001010010;
-            `OP_LHU   : signsD <= 13'b0000001010010;
-            `OP_LW    : signsD <= 13'b0000001010010; // lw
-            `OP_SB    : signsD <= 13'b0000000010110;
-            `OP_SH    : signsD <= 13'b0000000010110;
-            `OP_SW    : signsD <= 13'b0000000010110; // sw
+            `OP_LB    : signsD <= 14'b10000001010010;
+            `OP_LBU   : signsD <= 14'b10000001010010;
+            `OP_LH    : signsD <= 14'b10000001010010;
+            `OP_LHU   : signsD <= 14'b10000001010010;
+            `OP_LW    : signsD <= 14'b10000001010010; // lw
+            `OP_SB    : signsD <= 14'b10000000010110;
+            `OP_SH    : signsD <= 14'b10000000010110;
+            `OP_SW    : signsD <= 14'b10000000010110; // sw
             //arithmetic type
-            `OP_ADDI  : signsD <= 13'b0000001010000; // addi
-            `OP_ADDIU : signsD <= 13'b0000001010000; // addiu     //alusrcA???1
-            `OP_SLTI  : signsD <= 13'b0000001010000;// slti
-            `OP_SLTIU : signsD <= 13'b0000001010000; // sltiu
+            `OP_ADDI  : signsD <= 14'b00000001010000; // addi
+            `OP_ADDIU : signsD <= 14'b00000001010000; // addiu
+            `OP_SLTI  : signsD <= 14'b00000001010000;// slti
+            `OP_SLTIU : signsD <= 14'b00000001010000; // sltiu
             //logical type
-            `OP_ANDI  : signsD <= 13'b0000001010000; // andi
-            `OP_ORI   : signsD <= 13'b0000001010000; // ori
-            `OP_XORI  : signsD <= 13'b0000001010000; // xori
-            `OP_LUI   : signsD <= 13'b0000001010000; // lui
+            `OP_ANDI  : signsD <= 14'b00000001010000; // andi
+            `OP_ORI   : signsD <= 14'b00000001010000; // ori
+            `OP_XORI  : signsD <= 14'b00000001010000; // xori
+            `OP_LUI   : signsD <= 14'b00000001010000; // lui
             
             // branch and jump
-            `OP_BEQ   : signsD <= 13'b0000000001000; // BEQ
-            `OP_BNE   : signsD <= 13'b0000000001000; // BNE
-            `OP_BGTZ  : signsD <= 13'b0000000001000; // BGTZ
-            `OP_BLEZ  : signsD <= 13'b0000000001000; // BLEZ  
+            `OP_BEQ   : signsD <= 14'b00000000001000; // BEQ
+            `OP_BNE   : signsD <= 14'b00000000001000; // BNE
+            `OP_BGTZ  : signsD <= 14'b00000000001000; // BGTZ
+            `OP_BLEZ  : signsD <= 14'b00000000001000; // BLEZ  
             `OP_SPEC_B:     // BGEZ,BLTZ,BGEZAL,BLTZAL
                 case(rt)
-                    `RT_BGEZ : signsD  <= 13'b0000000001000;
-                    `RT_BLTZ : signsD  <= 13'b0000000001000;
-                    `RT_BGEZAL: signsD <= 13'b0010001001000;
-                    `RT_BLTZAL: signsD <= 13'b0010001001000;
+                    `RT_BGEZ : signsD  <= 14'b00000000001000;
+                    `RT_BLTZ : signsD  <= 14'b00000000001000;
+                    `RT_BGEZAL: signsD <= 14'b00010001001000;
+                    `RT_BLTZAL: signsD <= 14'b00010001001000;
                     default: invalid <= 1'b1;
                 endcase
-            `OP_J     : signsD <= 13'b0000000000001; // J     
-            `OP_JAL   : signsD <= 13'b0000101000000; 
-            // ç‰¹æƒæŒ‡ä»¤
-            // signsD = {12cp0write,11hilowrite,10bal,9jr,8jal,7alusrcA,6regwrite,5regdst,,4alusrcB,3branch,2memWrite,1memtoReg,0jump}
+            `OP_J     : signsD <= 14'b00000000000001; // J     
+            `OP_JAL   : signsD <= 14'b00000101000000; 
+            // ÌØÈ¨Ö¸Áî
             `OP_SPECIAL_INST:
                 case (rs)
-                    `RS_MFC0: signsD <= 13'b0000001100000;
-                    `RS_MTC0: signsD <= 13'b1000000000000;
-                    default : signsD <= 13'b0000000000000;
+                    `RS_MFC0: signsD <= 14'b00000001100000;
+                    `RS_MTC0: signsD <= 14'b01000000000000;
+                    default : signsD <= 14'b00000000000000;
                 endcase
             default: invalid <= 1'b1;
         endcase
     end
    
     // Execute
-    flopenrc #(12) dff1E(clk,rst,flushE,~stallE,signsD,signsE);
+    flopenrc #(14) dff1E(clk,rst,flushE,~stallE,signsD,signsE);
     // Mem
-    flopenr #(12) dff1M(clk,rst,ena,signsE,signsM);
+    flopenrc #(14) dff1M(clk,rst,clear ,~stallM,signsE,signsM);
     // Write
-    flopenr #(12) dff1W(clk,rst,ena,signsM,signsW);    
+    flopenrc #(14) dff1W(clk,rst,clear ,~stallW,signsM,signsW);    
     
 endmodule

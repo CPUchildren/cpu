@@ -1,10 +1,10 @@
 `timescale 1ns / 1ps
 `include "defines.vh"
 module datapath (
-    input wire clk,rst,i_stall,d_stall,longest_stall,
+    input wire clk,rst,i_stall,d_stall,
     input wire [31:0]instrF,data_sram_rdataM,
 
-    output wire memenD,
+    output wire memenM,longest_stall,
     output wire [3:0] data_sram_wenM,
     output wire [31:0]pc_now,data_sram_waddr,
     output wire [31:0]data_sram_wdataM
@@ -13,9 +13,7 @@ module datapath (
 // new
 // ====================================== 变量定义区，every part ======================================
 wire clear,ena;
-wire [63:0]hilo;   // hilo_i;
-//wire div_ready,start_div,signed_div,hilo_in_signal;
-//wire [1:0] state_div;
+wire [63:0]hilo;
 // F
 wire stallF;
 wire [31:0]pc_plus4F,pc_next,pc_next_jump,pc_next_jr,pc_next_j;
@@ -82,9 +80,9 @@ mux2 mux2_jump(
     .y(pc_next_j)
 );
 mux3 mux3_branch(
-    .d0(pc_plus4F),
-    .d1(pc_branchD),
-    .d2(pc_next_j),
+    .d0(pc_plus4F), // 00,11
+    .d1(pc_branchD), // 01
+    .d2(pc_next_j),  // 10
     .sel({jumpD|jalD|jrD,pcsrcD}),
     .y(pc_next)
     ); // 三选一，正常PC，分支PC，跳转PC
@@ -107,10 +105,10 @@ assign exceptF = (pc_now[1:0] == 2'b00) ? 8'b00000000 : 8'b10000000;
 
 // ====================================== Decoder ======================================
 // 延迟槽继续执行，不清空
-flopenrc DFF_instrD   (clk,rst,clear,~stallD,instrF,instrD);
-flopenrc DFF_pc_nowD  (clk,rst,clear,~stallD,pc_now,pc_nowD);
-flopenrc DFF_pc_plus4D(clk,rst,clear,~stallD,pc_plus4F,pc_plus4D);
-flopenrc #(8) DFF_exceptD(clk,rst,flushD,~stallD,exceptF,exceptD);
+flopenrc #(32) DFF_instrD   (clk,rst,clear ,~stallD,instrF,instrD);
+flopenrc #(32) DFF_pc_nowD  (clk,rst,clear ,~stallD,pc_now,pc_nowD);
+flopenrc #(32) DFF_pc_plus4D(clk,rst,clear ,~stallD,pc_plus4F,pc_plus4D);
+flopenrc #(8 ) DFF_exceptD  (clk,rst,flushD,~stallD,exceptF,exceptD);
 
 
 main_dec main_dec(
@@ -118,6 +116,8 @@ main_dec main_dec(
     .rst(rst),
     .flushE(flushE),
     .stallE(stallE),
+    .stallM(stallM),
+    .stallW(stallW),
     .instrD(instrD),
     
     .regwriteW(regwriteW),
@@ -142,7 +142,7 @@ main_dec main_dec(
     .jalW(jalW),
     .jrD(jrD),
     .jrE(jrE),
-    .memenD(memenD),
+    .memenM(memenM),
     .invalid(invalidD)
 );
 
@@ -162,7 +162,7 @@ assign saD = instrD[10:6];
 
 regfile regfile(
 	.clk(clk),
-	.we3(regwriteW),
+	.we3(regwriteW & ~stallW), // 非阻塞时进行写
 	.ra1(instrD[25:21]), 
     .ra2(instrD[20:16]),
     .wa3(reg_waddrW), // 前in后out
@@ -226,13 +226,11 @@ flopenrc #(5 ) DFF_rtE             (clk,rst,flushE,~stallE,rtD,rtE);
 flopenrc #(5 ) DFF_rdE             (clk,rst,flushE,~stallE,rdD,rdE);
 flopenrc #(5 ) DFF_rsE             (clk,rst,flushE,~stallE,rsD,rsE);
 flopenrc #(5 ) DFF_saE             (clk,rst,flushE,~stallE,saD,saE);
-flopenrc DFF_instrE                (clk,rst,flushE,~stallE,instrD,instrE);
-flopenrc DFF_pc_nowE               (clk,rst,flushE,~stallE,pc_nowD,pc_nowE);
-flopenrc DFF_pc_plus4E             (clk,rst,flushE,~stallE,pc_plus4D,pc_plus4E);
+flopenrc #(32) DFF_instrE          (clk,rst,flushE,~stallE,instrD,instrE);
+flopenrc #(32) DFF_pc_nowE         (clk,rst,flushE,~stallE,pc_nowD,pc_nowE);
+flopenrc #(32) DFF_pc_plus4E       (clk,rst,flushE,~stallE,pc_plus4D,pc_plus4E);
 flopenrc #(1 ) DFF_is_in_delayslotE(clk,rst,flushE,~stallE,is_in_delayslotD,is_in_delayslotE);
-
-// judge except instr
-flopenrc #(8) DFF_exceptE(clk,rst,flushE,ena,{exceptD[7],syscallD,breakD,eretD,invalidD,exceptD[2:0]},exceptE);
+flopenrc #(8 ) DFF_exceptE         (clk,rst,flushE,~stallE,{exceptD[7],syscallD,breakD,eretD,invalidD,exceptD[2:0]},exceptE);  // judge except instr
 
 // link指令对寄存器的选择
 mux3 #(5) mux3_regDst(
@@ -288,15 +286,15 @@ mux2 alu_pc8(
 );
 
 // ====================================== Memory ======================================
-flopenrc       DFF_alu_resM        (clk,rst,clear,ena,alu_resE_real,alu_resM);
-flopenrc       DFF_sel_rd2M        (clk,rst,clear,ena,sel_rd2E,sel_rd2M);
-flopenrc #(5 ) DFF_reg_waddrM      (clk,rst,clear,ena,reg_waddrE,reg_waddrM);
-flopenrc       DFF_instrM          (clk,rst,clear,ena,instrE,instrM);
-flopenrc #(64) DFF_aluout_64M      (clk,rst,clear,ena,aluout_64E,aluout_64M);
-flopenrc DFF_pc_nowM               (clk,rst,clear,ena,pc_nowE,pc_nowM);
-flopenrc #(8 ) DFF_exceptM         (clk,rst,clear,ena,{exceptE[7:3],overflow,exceptE[1:0]},exceptM);
-flopenrc #(1 ) DFF_is_in_delayslotM(clk,rst,clear,ena,is_in_delayslotE,is_in_delayslotM);
-flopenrc #(5 ) DFF_reg_rdM         (clk,rst,clear,ena,rdE,rdM);
+flopenrc #(32) DFF_alu_resM        (clk,rst,clear,~stallM,alu_resE_real,alu_resM);
+flopenrc #(32) DFF_sel_rd2M        (clk,rst,clear,~stallM,sel_rd2E,sel_rd2M);
+flopenrc #(5 ) DFF_reg_waddrM      (clk,rst,clear,~stallM,reg_waddrE,reg_waddrM);
+flopenrc #(32) DFF_instrM          (clk,rst,clear,~stallM,instrE,instrM);
+flopenrc #(64) DFF_aluout_64M      (clk,rst,clear,~stallM,aluout_64E,aluout_64M);
+flopenrc #(32) DFF_pc_nowM         (clk,rst,clear,~stallM,pc_nowE,pc_nowM);
+flopenrc #(8 ) DFF_exceptM         (clk,rst,clear,~stallM,{exceptE[7:3],overflow,exceptE[1:0]},exceptM);
+flopenrc #(1 ) DFF_is_in_delayslotM(clk,rst,clear,~stallM,is_in_delayslotE,is_in_delayslotM);
+flopenrc #(5 ) DFF_reg_rdM         (clk,rst,clear,~stallM,rdE,rdM);
 
 
 // M阶段写回hilo
@@ -358,27 +356,33 @@ cp0_reg CP0(
 );
 
 // ====================================== WriteBack ======================================
-flopenrc DFF_alu_resW         (clk,rst,clear,ena,alu_resM,alu_resW);
-flopenrc DFF_data_sram_rdataW (clk,rst,clear,ena,read_dataM,data_sram_rdataW);
-flopenrc #(5) DFF_reg_waddrW  (clk,rst,clear,ena,reg_waddrM,reg_waddrW);
-flopenrc DFF_pc_nowW          (clk,rst,clear,ena,pc_nowM,pc_nowW);
+flopenrc #(32) DFF_alu_resW        (clk,rst,clear,~stallW,alu_resM,alu_resW);
+flopenrc #(32) DFF_data_sram_rdataW(clk,rst,clear,~stallW,read_dataM,data_sram_rdataW);
+flopenrc #(5 ) DFF_reg_waddrW      (clk,rst,clear,~stallW,reg_waddrM,reg_waddrW);
+flopenrc #(32) DFF_pc_nowW         (clk,rst,clear,~stallW,pc_nowM,pc_nowW);
 
 
 mux2 mux2_memtoReg(.a(alu_resW),.b(data_sram_rdataW),.sel(memtoRegW),.y(wd3W));
 
 // ******************* 冒险信号总控制 *****************
-// TODO hazard信号对齐
 hazard hazard(
-    regwriteE,regwriteM,regwriteW,memtoRegE,memtoRegM,branchD,jrD,stall_divE,
-    .i_stall(i_stall),
-    .d_stall(d_stall),
-    rsD,rtD,rsE,rtE,reg_waddrM,reg_waddrW,reg_waddrE,
-    stallF,stallD,stallE,flushE,forwardAD,forwardBD,
-    forwardAE, forwardBE,
-
-    instrM[31:26],
-    bad_addr,
-    newpcM
+    .regwriteE(regwriteE),.regwriteM(regwriteM),.regwriteW(regwriteW),
+    .memtoRegE(memtoRegE),.memtoRegM(memtoRegM),
+    .branchD(branchD),.jrD(jrD),
+    .stall_divE(stall_divE),.i_stall(i_stall),.d_stall(d_stall),
+    .rsD(rsD),.rtD(rtD),.rsE(rsE),.rtE(rtE),
+    .reg_waddrM(reg_waddrM),.reg_waddrW(reg_waddrW),.reg_waddrE(reg_waddrE),
+    
+    .stallF(stallF),.stallD(stallD),.stallE(stallE),.stallM(stallM),.stallW(stallW),
+    .longest_stall(longest_stall),
+    .flushE(flushE),
+    .forwardAD(forwardAD),.forwardBD(forwardBD),
+    .forwardAE(forwardAE),.forwardBE(forwardBE),
+    // 异常
+    .opM(instrM[31:26]),
+    .excepttypeM(excepttypeM),
+    .cp0_epcM(epc_o),
+    .newpcM(newpcM)
 );
 
 endmodule

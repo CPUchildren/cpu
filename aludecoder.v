@@ -73,7 +73,7 @@ module alu_dec (
             `OP_SB:   aluopD <= `ALUOP_ADD;
             `OP_SH:   aluopD <= `ALUOP_ADD;
             `OP_SW:   aluopD <= `ALUOP_ADD;
-            // 鐗规潈鎸囦护
+            // 特权指令
             `OP_SPECIAL_INST:
                 case (rs)
                     `RS_MFC0: aluopD <= `ALUOP_MFC0;
