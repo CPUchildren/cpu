@@ -1,4 +1,3 @@
-//////////////////////////////////////////////////////////////////////
 ////                                                              ////
 //// Copyright (C) 2014 leishangwen@163.com                       ////
 ////                                                              ////
@@ -26,7 +25,7 @@
 // File:    div.v
 // Author:  Lei Silei
 // E-mail:  leishangwen@163.com
-// Description:³ý·¨Ä£¿é
+// Description:ï¿½ï¿½ï¿½ï¿½Ä£ï¿½ï¿½
 // Revision: 1.0
 //////////////////////////////////////////////////////////////////////
 
@@ -106,7 +105,7 @@ always @ (posedge clk) begin
                     dividend <= {`ZeroWord,`ZeroWord};
                     dividend[32:1] <= temp_op1;
                     divisor <= temp_op2;
-                    $display("³ý·¨¿ªÊ¼");
+                    $display("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¼");
          end
       end else begin
                     ready_o <= `DivResultNotReady;
@@ -118,7 +117,7 @@ always @ (posedge clk) begin
             state <= `DivEnd;		 		
         end
         `DivOn:				begin               //DivOn??
-            $display("³ý·¨Ö´ÐÐ");
+            $display("ï¿½ï¿½ï¿½ï¿½Ö´ï¿½ï¿½");
             if(annul_i == 1'b0) begin
                 if(cnt != 6'b100000) begin
                     if(div_temp[32] == 1'b1) begin
@@ -130,12 +129,12 @@ always @ (posedge clk) begin
                 end else begin
                     // if((signed_div_i == 1'b1) && ((opdata1_i[31] ^ opdata2_i[31]) == 1'b1)) begin
                     if((signed_div_i == 1'b1) && ((sign1 ^ sign2) == 1'b1)) begin
-                        // ÉÌ lo
+                        // ï¿½ï¿½ lo
                         dividend[31:0] <= (~dividend[31:0] + 1);
                     end
                     // if((signed_div_i == 1'b1) && ((opdata1_i[31] ^ dividend[64]) == 1'b1)) begin 
                     if((signed_div_i == 1'b1) && ((sign1 ^ dividend[64]) == 1'b1)) begin              
-                        // ÓàÊý hi
+                        // ï¿½ï¿½ï¿½ï¿½ hi
                         dividend[64:33] <= (~dividend[64:33] + 1);
                     end
                     state <= `DivEnd;

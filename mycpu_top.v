@@ -68,6 +68,15 @@ module mycpu_top(
     wire [31:0] inst_rdata     ;
     wire        inst_addr_ok   ;
     wire        inst_data_ok   ;
+    // inst cache
+    wire        cache_inst_req    ;
+    wire        cache_inst_wr     ;
+    wire [1 :0] cache_inst_size   ;
+    wire [31:0] cache_inst_addr   ;
+    wire [31:0] cache_inst_wdata  ;
+    wire [31:0] cache_inst_rdata  ;
+    wire        cache_inst_addr_ok;
+    wire        cache_inst_data_ok;
     // data sram
     wire        data_sram_en   ;
     wire [3 :0] data_sram_wen  ;
@@ -83,36 +92,52 @@ module mycpu_top(
     wire [31:0] data_rdata     ;
     wire        data_addr_ok   ;
     wire        data_data_ok   ;
+    // data cache
+    wire        no_cache           ;
+    wire        cache_data_req     ;
+    wire        cache_data_wr      ;
+    wire [1 :0] cache_data_size    ;
+    wire [31:0] cache_data_addr    ;
+    wire [31:0] cache_data_wdata   ;
+    wire [31:0] cache_data_rdata   ;
+    wire        cache_data_addr_ok ;
+    wire        cache_data_data_ok ;
     // datapath
     wire memen; // ,memwrite
     wire longest_stall,i_stall,d_stall;
     // wire [3:0]sel;
     wire [31:0] instr; // , pc, aluout, writedata, readdata;
-    
+    wire [31:0] data_sram_addr_temp;
     
     // variable assignment
     // instr
-    assign inst_sram_en = 1'b1;     //濡傛灉鏈塱nst_en锛屽氨鐢╥nst_en
+    assign inst_sram_en = 1'b1;     //如果有inst_en，就用inst_en
     assign inst_sram_wen = 4'b0;
     // assign inst_sram_addr = pc;
     assign inst_sram_wdata = 32'b0;
     assign instr = inst_sram_rdata;
     
     // data
-    assign data_sram_en = memen;     //濡傛灉鏈塪ata_en锛屽氨鐢╠ata_en
+    assign data_sram_en = memen;     //如果有data_en，就用data_en
     // assign data_sram_wen = {4{memwrite}};
     // assign data_sram_addr = aluout;
     // assign data_sram_wdata = writedata;
     // assign readdata = data_sram_rdata;
-
+    
     // debug
     assign debug_wb_pc          = datapath.pc_nowW;
     assign debug_wb_rf_wen      = {4{datapath.regwriteW & ~datapath.stallW}}; 
     assign debug_wb_rf_wnum     = datapath.reg_waddrW;
     assign debug_wb_rf_wdata    = datapath.wd3W;
 
-    
-    // sub module
+// sub module
+    // 地址映射+no_cache判断
+    tlb tlb(
+        .data_sram_addr_temp(data_sram_addr_temp),
+        .no_cache(no_cache),
+        .data_sram_addr(data_sram_addr)
+    );
+
     datapath datapath(
 		.clk(aclk),
         .rst(~aresetn), // to high active
@@ -129,7 +154,7 @@ module mycpu_top(
         .memenM(memen),
         // .memWriteM(memwrite),
         .data_sram_wenM(data_sram_wen),
-        .data_sram_waddr(data_sram_addr),
+        .data_sram_waddr(data_sram_addr_temp),
         .data_sram_wdataM(data_sram_wdata),
         .data_sram_rdataM(data_sram_rdata)
 	);
@@ -181,30 +206,76 @@ module mycpu_top(
         .inst_addr_ok (inst_addr_ok ),
         .inst_data_ok (inst_data_ok )
     );
+    i_cache_direct_map  i_cache(
+        .clk(aclk),    
+        .rst(~aresetn),
+        //mips core
+        .cpu_inst_req     (inst_req     ),
+        .cpu_inst_wr      (inst_wr      ),
+        .cpu_inst_size    (inst_size    ),
+        .cpu_inst_addr    (inst_addr    ),
+        .cpu_inst_wdata   (inst_wdata   ),
+        .cpu_inst_rdata   (inst_rdata   ),
+        .cpu_inst_addr_ok (inst_addr_ok ),
+        .cpu_inst_data_ok (inst_data_ok ),
 
+        //axi interface
+        .cache_inst_req    (cache_inst_req    ),
+        .cache_inst_wr     (cache_inst_wr     ),
+        .cache_inst_size   (cache_inst_size   ),
+        .cache_inst_addr   (cache_inst_addr   ),
+        .cache_inst_wdata  (cache_inst_wdata  ),
+        .cache_inst_rdata  (cache_inst_rdata  ),
+        .cache_inst_addr_ok(cache_inst_addr_ok),
+        .cache_inst_data_ok(cache_inst_data_ok)
+    );
+    d_cache_write_through d_cache(
+        .clk(aclk),    
+        .rst(~aresetn),
+        .no_cache(no_cache),
+        // mips core 
+        .cpu_data_req    (data_req     ),
+        .cpu_data_wr     (data_wr      ),
+        .cpu_data_size   (data_size    ),
+        .cpu_data_addr   (data_addr    ),
+        .cpu_data_wdata  (data_wdata   ),
+        .cpu_data_rdata  (data_rdata   ),
+        .cpu_data_addr_ok(data_addr_ok ),
+        .cpu_data_data_ok(data_data_ok ),
+
+        // axi interface
+        .cache_data_req    (cache_data_req    ),
+        .cache_data_wr     (cache_data_wr     ),
+        .cache_data_size   (cache_data_size   ),
+        .cache_data_addr   (cache_data_addr   ),
+        .cache_data_wdata  (cache_data_wdata  ),
+        .cache_data_rdata  (cache_data_rdata  ),
+        .cache_data_addr_ok(cache_data_addr_ok),
+        .cache_data_data_ok(cache_data_data_ok)
+    );
     cpu_axi_interface cpu_axi_interface(
         .clk(aclk),
-        .resetn(aresetn),  // 娉ㄦ剰锛宑pu_axi_interface鐨剅st淇″彿,low active
+        .resetn(aresetn),  // 注意，cpu_axi_interface的rst信号,low active
 
         //inst sram-like 
-        .inst_req     (inst_req     ),
-        .inst_wr      (inst_wr      ),
-        .inst_size    (inst_size    ),
-        .inst_addr    (inst_addr    ),
-        .inst_wdata   (inst_wdata   ),
-        .inst_rdata   (inst_rdata   ),
-        .inst_addr_ok (inst_addr_ok ),
-        .inst_data_ok (inst_data_ok ),
+        .inst_req     (cache_inst_req    ), // cache_inst_req    
+        .inst_wr      (cache_inst_wr     ), // cache_inst_wr     
+        .inst_size    (cache_inst_size   ), // cache_inst_size   
+        .inst_addr    (cache_inst_addr   ), // cache_inst_addr   
+        .inst_wdata   (cache_inst_wdata  ), // cache_inst_wdata  
+        .inst_rdata   (cache_inst_rdata  ), // cache_inst_rdata  
+        .inst_addr_ok (cache_inst_addr_ok), // cache_inst_addr_ok
+        .inst_data_ok (cache_inst_data_ok), // cache_inst_data_ok
         
         //data sram-like 
-        .data_req     (data_req     ),
-        .data_wr      (data_wr      ),
-        .data_size    (data_size    ),
-        .data_addr    (data_addr    ),
-        .data_wdata   (data_wdata   ),
-        .data_rdata   (data_rdata   ),
-        .data_addr_ok (data_addr_ok ),
-        .data_data_ok (data_data_ok ),
+        .data_req     (cache_data_req    ), // cache_data_req    
+        .data_wr      (cache_data_wr     ), // cache_data_wr     
+        .data_size    (cache_data_size   ), // cache_data_size   
+        .data_addr    (cache_data_addr   ), // cache_data_addr   
+        .data_wdata   (cache_data_wdata  ), // cache_data_wdata  
+        .data_rdata   (cache_data_rdata  ), // cache_data_rdata  
+        .data_addr_ok (cache_data_addr_ok), // cache_data_addr_ok
+        .data_data_ok (cache_data_data_ok), // cache_data_data_ok
 
         //axi
         //ar
