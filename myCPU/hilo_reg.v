@@ -1,33 +1,12 @@
 `timescale 1ns / 1ps
 `include "defines.vh"
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 2017/12/12 11:26:03
-// Design Name: 
-// Module Name: hilo_reg
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
-
 
 module hilo_reg(
 	input wire clk,rst,we,		// 时钟,复位,使能
 	// input wire[31:0] hi,lo,
 	input wire[63:0] hilo_i,
 	
-	// 具体的hilo操作直接在alu里面进行了
-	// output reg[31:0] hilo_res,
+	// output reg[31:0] hilo_res,  // 具体的hilo操作直接在alu里面进行了
 	output reg[63:0] hilo  // hilo current data
     );
 	

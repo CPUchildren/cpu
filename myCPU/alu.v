@@ -1,7 +1,5 @@
 `timescale 1ns / 1ps
 `include "defines.vh"
-// Module Name: alu
-// Description: alu基本运算
 
 module alu(
     input  wire clk,rst,
@@ -28,18 +26,7 @@ module alu(
     assign zero = (y == 32'b0);
     
     assign aluout_64= (div_ready) ?  div_result : temp_aluout_64;
-//     always @(*) begin
-//       if(aluop == `ALUOP_DIV && div_ready ==1'b0) begin
-//           stall_div <= 1'b1;
-//       end else if(aluop == `ALUOP_DIVU && div_ready ==1'b0) begin
-//           stall_div <= 1'b1;
-//       end else if(state_div == `DivOn)begin
-//           stall_div <= 1'b1;
-//       end else begin
-//           stall_div <= 1'b0;
-//       end
-//    end
-    
+
     always @(*) begin
         stall_div<= 1'b0;
         overflow <= 0;
@@ -64,7 +51,6 @@ module alu(
             `ALUOP_SUBU  : begin 
                 y <= a - b;
             end
-            // TODO 这里是不是可以只用一个aluop
             `ALUOP_SLT   : y <= $signed(a) < $signed(b);
             `ALUOP_SLTU  : y <= a < b;
             `ALUOP_SLTI  :  begin//y <= a < b;
@@ -137,9 +123,6 @@ module alu(
             `ALUOP_SRLV: y <= b >> a[4:0];
             `ALUOP_SRA: y <= $signed(b) >>> a[4:0];
             `ALUOP_SRAV: y <= $signed(b) >>> a[4:0];
-            // 分支指令
-//            `ALUOP_BG
-            
             // 数据移动指令
             `ALUOP_MTHI: temp_aluout_64 <= {a,hilo[31:0]};
             `ALUOP_MTLO: temp_aluout_64 <= {hilo[63:32],a};
@@ -150,7 +133,6 @@ module alu(
         endcase
     end
     
-    // TODO 
     div mydiv(
         .clk(clk),
         .rst(rst),

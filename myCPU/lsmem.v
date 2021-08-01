@@ -95,7 +95,6 @@ always @(*) begin
                  case(alu_resM[1:0])
                      2'b10: data_sram_wenM <= 4'b1100;
                      2'b00: data_sram_wenM <= 4'b0011;
-                     // TODO 异常处理
                      default: ;
                  endcase
              end
@@ -103,7 +102,6 @@ always @(*) begin
          `OP_SB: begin
              data_sram_wdataM <= {sel_rd2M[7:0],sel_rd2M[7:0],sel_rd2M[7:0],sel_rd2M[7:0]};
              case(alu_resM[1:0])
-                 // TODO 大端小端的问题
                  2'b11: data_sram_wenM <= 4'b1000;
                  2'b10: data_sram_wenM <= 4'b0100;
                  2'b01: data_sram_wenM <= 4'b0010;
