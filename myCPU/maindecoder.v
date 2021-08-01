@@ -2,7 +2,7 @@
 `include "defines.vh"
 module main_dec(
     input wire clk,rst,flushE,stallE,
-    input wire [7:0]exceptM,
+    input wire [7:0]excepttypeM,
     input wire [31:0]instrD,
     output wire regwriteW,regdstE,alusrcAE,alusrcBE,branchD,memWriteM,memtoRegW,
     output wire regwriteE,regwriteM,memtoRegE,memtoRegM,hilowriteM,cp0writeM,
@@ -35,7 +35,7 @@ module main_dec(
     assign memtoRegM = signsM[1];
     assign jumpD = signsD[0];
     assign hilowriteM = signsM[11]; // hilo E读取，M写回，避免数据冒险处理
-    assign cp0writeM = signsM[11];  // CP0  E读取，M写回，避免数据冒险处理
+    assign cp0writeM = signsM[12];  // CP0  E读取，M写回，避免数据冒险处理
     assign balD=signsD[10];
     assign balE=signsE[10];
     assign balW=signsW[10];
@@ -143,12 +143,12 @@ module main_dec(
     end
    
     // Execute
-    flopenrc #(12) dff1E(clk,rst,flushE|(|exceptM),~stallE,signsD,signsE);
+    flopenrc #(13) dff1E(clk,rst,flushE|(|excepttypeM),~stallE,signsD,signsE);
     // Mem
     // flopenr #(12) dff1M(clk,rst,ena,signsE,signsM);
-    flopenrc #(12) dff1M(clk,rst,(|exceptM),ena,signsE,signsM);
+    flopenrc #(13) dff1M(clk,rst,(|excepttypeM),ena,signsE,signsM);
     // Write
     // flopenr #(12) dff1W(clk,rst,ena,signsM,signsW);    
-    flopenrc #(12) dff1W(clk,rst,(|exceptM),ena,signsM,signsW);
+    flopenrc #(13) dff1W(clk,rst,(|excepttypeM),ena,signsM,signsW);
     
 endmodule

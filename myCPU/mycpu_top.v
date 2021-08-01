@@ -1,7 +1,7 @@
 module mycpu_top(
     input clk,
     input resetn,  //low active
-    input ext_int,  //interrupt,high active
+    input [5:0]ext_int,  //interrupt,high active
     //cpu inst sram
     output        inst_sram_en   ,
     output [3 :0] inst_sram_wen  ,
@@ -21,9 +21,9 @@ module mycpu_top(
     output [31:0] debug_wb_rf_wdata
 );
 
-    // ä¸?ä¸ªä¾‹å­?
+    // ä¸?ä¸?ä¾‹å??
 	// wire [31:0] pc;
-	wire [31:0] instr;
+	wire [31:0] instr,instrD,instrE,instrM;
 	// wire memwrite;
     // wire [3:0]sel;
 	// wire [31:0] aluout, writedata, readdata;
@@ -39,7 +39,10 @@ module mycpu_top(
         .data_sram_rdataM(data_sram_rdata),
         .data_sram_waddr(data_sram_addr),
         .data_sram_wdataM(data_sram_wdata),
-        .data_sram_wenM(data_sram_wen)
+        .data_sram_wenM(data_sram_wen),
+        // except
+        .ext_int(ext_int),
+        .instrD(instrD),.instrE(instrE),.instrM(instrM)
 	);
 
     // instr
@@ -63,8 +66,17 @@ module mycpu_top(
     assign debug_wb_rf_wdata    = datapath.wd3W;
 
     //ascii
-    instdec instdec(
+    instdec instdecF(
         .instr(instr)
+    );
+    instdec instdecD(
+        .instr(instrD)
+    );
+    instdec instdecE(
+        .instr(instrE)
+    );
+    instdec instdecM(
+        .instr(instrM)
     );
 
 endmodule

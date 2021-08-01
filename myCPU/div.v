@@ -106,7 +106,7 @@ always @ (posedge clk) begin
                     dividend <= {`ZeroWord,`ZeroWord};
                     dividend[32:1] <= temp_op1;
                     divisor <= temp_op2;
-                    $display("除法开始");
+                    // $display("除法开始");
          end
       end else begin
                     ready_o <= `DivResultNotReady;
@@ -118,7 +118,7 @@ always @ (posedge clk) begin
             state <= `DivEnd;		 		
         end
         `DivOn:				begin               //DivOn??
-            $display("除法执行");
+            // $display("除法执行");
             if(annul_i == 1'b0) begin
                 if(cnt != 6'b100000) begin
                     if(div_temp[32] == 1'b1) begin

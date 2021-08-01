@@ -72,7 +72,7 @@ module hazard (
                     newpcM <= 32'hBFC00380;
                 end
                 32'h0000000e: begin
-                    newpcM <= cp0_epcM + 32'h00000004;
+                    newpcM <= cp0_epcM;
                 end
                 default : ;
             endcase

@@ -6,8 +6,10 @@ module datapath (
 
     output wire [3:0] data_sram_wenM,
     output wire [31:0]pc_now,data_sram_waddr,
-    output wire [31:0]data_sram_wdataM
-    
+    output wire [31:0]data_sram_wdataM,
+    // except 
+    input wire [5:0]ext_int,
+    output wire [31:0]instrD,instrE,instrM
 );
 // new
 // ====================================== ????????????every part ======================================
@@ -16,7 +18,7 @@ wire [63:0]hilo;   // hilo_i;
 //wire div_ready,start_div,signed_div,hilo_in_signal;
 //wire [1:0] state_div;
 // F
-wire stallF;
+wire stallF,is_in_delayslotF;
 wire [31:0]pc_plus4F,pc_next,pc_next_jump,pc_next_jr,pc_next_j,pc_next_bj;
 wire [7:0] exceptF;
 // D
@@ -25,7 +27,7 @@ wire stallD,flushD,forwardAD,forwardBD;
 wire pcsrcD,equalD,branchD,jumpD,jrD,balD,jalD;
 wire [4:0]rtD,rdD,rsD,saD;
 wire [31:0]pc_nowD,pc_plus4D,pc_branchD,rd1D,rd2D,rd1D_branch,rd2D_branch,newpc;
-wire [31:0]instrD,instrD_sl2,sign_immD,sign_immD_sl2;
+wire [31:0]instrD_sl2,sign_immD,sign_immD_sl2;//instrD
 wire [7:0] exceptD;
 wire invalidD, is_in_delayslotD;
 // E
@@ -33,7 +35,7 @@ wire flushE,stallE,regdstE,alusrcAE,alusrcBE,regwriteE,memtoRegE,jrE,balE,jalE,s
 wire [1:0]forwardAE,forwardBE;
 wire [4:0]rtE,rdE,rsE,saE,reg_waddrE;
 wire [7:0]alucontrolE;
-wire [31:0]instrE,rd1E,rd2E,srcB,sign_immE,pc_plus4E,pc_plus8E,rd1_saE;
+wire [31:0]rd1E,rd2E,srcB,sign_immE,pc_plus4E,pc_plus8E,rd1_saE;//instrE
 wire [31:0]pc_nowE,alu_resE,sel_rd1E,sel_rd2E,alu_resE_real,cp0_data_oE;
 wire [63:0]div_result,aluout_64E;
 wire [7:0] exceptE;
@@ -41,7 +43,7 @@ wire overflow, is_in_delayslotE;
 // M
 wire memtoRegM,regwriteM,memWriteM;
 wire [4:0]reg_waddrM;
-wire [31:0]instrM,pc_nowM,alu_resM,read_dataM,sel_rd2M,rd2M;
+wire [31:0]pc_nowM,alu_resM,read_dataM,sel_rd2M,rd2M;//instrM
 wire [63:0]div_resultM,aluout_64M;
 wire [31:0]if_addr;
 wire [7:0] exceptM;
@@ -89,14 +91,14 @@ mux3 mux3_branch(
 mux2 mux2_next(
     .a(pc_next_bj),
     .b(newpcM), // ?????jr???????jump??PC
-    .sel(|exceptM),
+    .sel(|excepttypeM),
     .y(pc_next)
 );
 
 pc pc(
     .clk(clk),
     .rst(rst),
-    .ena(~stallF),
+    .ena(~stallF|(|excepttypeM)),
     .din(pc_next),
     .dout(pc_now)
 );
@@ -109,13 +111,15 @@ adder adder(
 
 // 异常
 assign exceptF = (pc_now[1:0] == 2'b00) ? 8'b00000000 : 8'b10000000;
+assign is_in_delayslotF = (jumpD|jrD|jalD|branchD); // 延迟槽的取指时，判断上一条是否是分支指令
 
 // ====================================== Decoder ======================================
 // ?????????У??????
-flopenrc DFF_instrD   (clk,rst,clear|(|exceptM),~stallD,instrF,instrD);
-flopenrc DFF_pc_nowD  (clk,rst,clear|(|exceptM),~stallD,pc_now,pc_nowD);
-flopenrc DFF_pc_plus4D(clk,rst,clear|(|exceptM),~stallD,pc_plus4F,pc_plus4D);
-flopenrc #(8) DFF_exceptD(clk,rst,clear|(|exceptM),~stallD,exceptF,exceptD);
+flopenrc #(1 ) DFF_is_in_delayslotD   (clk,rst,clear|(|excepttypeM),~stallD,is_in_delayslotF,is_in_delayslotD);
+flopenrc DFF_instrD   (clk,rst,clear|(|excepttypeM),~stallD,instrF,instrD);
+flopenrc DFF_pc_nowD  (clk,rst,clear,~stallD & ~(|excepttypeM),pc_now,pc_nowD);
+flopenrc DFF_pc_plus4D(clk,rst,clear|(|excepttypeM),~stallD,pc_plus4F,pc_plus4D);
+flopenrc #(8) DFF_exceptD(clk,rst,clear|(|excepttypeM),~stallD,exceptF,exceptD);
 
 
 main_dec main_dec(
@@ -124,7 +128,7 @@ main_dec main_dec(
     .flushE(flushE),
     .stallE(stallE),
     .instrD(instrD),
-    .exceptM(exceptM),
+    .excepttypeM(excepttypeM),
     .regwriteW(regwriteW),
     .regdstE(regdstE),
     .alusrcAE(alusrcAE),
@@ -221,23 +225,22 @@ eqcmp pc_predict(
 );
 assign pcsrcD = equalD & (branchD|balD);
 
-assign is_in_delayslotD = (jumpD|jrD|jalD|branchD);
 
 // ====================================== Execute ======================================
-flopenrc #(32) DFF_rd1E     (clk,rst,flushE|(|exceptM),~stallE,rd1D,rd1E);
-flopenrc #(32) DFF_rd2E     (clk,rst,flushE|(|exceptM),~stallE,rd2D,rd2E);
-flopenrc #(32) DFF_sign_immE(clk,rst,flushE|(|exceptM),~stallE,sign_immD,sign_immE);
-flopenrc #(5) DFF_rtE       (clk,rst,flushE|(|exceptM),~stallE,rtD,rtE);
-flopenrc #(5) DFF_rdE       (clk,rst,flushE|(|exceptM),~stallE,rdD,rdE);
-flopenrc #(5) DFF_rsE       (clk,rst,flushE|(|exceptM),~stallE,rsD,rsE);
-flopenrc #(5) DFF_saE       (clk,rst,flushE|(|exceptM),~stallE,saD,saE);
-flopenrc DFF_instrE         (clk,rst,flushE|(|exceptM),~stallE,instrD,instrE);
-flopenrc DFF_pc_nowE        (clk,rst,flushE|(|exceptM),~stallE,pc_nowD,pc_nowE);
-flopenrc DFF_pc_plus4E      (clk,rst,flushE|(|exceptM),~stallE,pc_plus4D,pc_plus4E);
-flopenrc #(1) DFF_is_in_delayslotE(clk,rst,flushE&(|exceptM),~stallE,is_in_delayslotD,is_in_delayslotE);
+flopenrc #(32) DFF_rd1E     (clk,rst,flushE|(|excepttypeM),~stallE,rd1D,rd1E);
+flopenrc #(32) DFF_rd2E     (clk,rst,flushE|(|excepttypeM),~stallE,rd2D,rd2E);
+flopenrc #(32) DFF_sign_immE(clk,rst,flushE|(|excepttypeM),~stallE,sign_immD,sign_immE);
+flopenrc #(5) DFF_rtE       (clk,rst,flushE|(|excepttypeM),~stallE,rtD,rtE);
+flopenrc #(5) DFF_rdE       (clk,rst,flushE|(|excepttypeM),~stallE,rdD,rdE);
+flopenrc #(5) DFF_rsE       (clk,rst,flushE|(|excepttypeM),~stallE,rsD,rsE);
+flopenrc #(5) DFF_saE       (clk,rst,flushE|(|excepttypeM),~stallE,saD,saE);
+flopenrc DFF_instrE         (clk,rst,flushE|(|excepttypeM),~stallE,instrD,instrE);
+flopenrc DFF_pc_nowE        (clk,rst,flushE,~stallE & ~(|excepttypeM),pc_nowD,pc_nowE);
+flopenrc DFF_pc_plus4E      (clk,rst,flushE|(|excepttypeM),~stallE,pc_plus4D,pc_plus4E);
+flopenrc #(1) DFF_is_in_delayslotE(clk,rst,flushE|(|excepttypeM),~stallE,is_in_delayslotD,is_in_delayslotE);
 
 // judge except instr
-flopenrc #(8) DFF_exceptE(clk,rst,flushE&(|exceptM),ena,{exceptD[7],syscallD,breakD,eretD,invalidD,exceptD[2:0]},exceptE);
+flopenrc #(8) DFF_exceptE(clk,rst,flushE | (|excepttypeM),~stallE,{exceptD[7],syscallD,breakD,eretD,invalidD,exceptD[2:0]},exceptE);
 
 // link指令对寄存器的选择
 mux3 #(5) mux3_regDst(
@@ -257,7 +260,13 @@ mux2 #(32) mux2_alusrcAE(
 // 00??????01д????_W?? 10??????_M
 mux3 #(32) mux3_forwardAE(rd1_saE,wd3W,alu_resM,forwardAE,sel_rd1E);
 mux3 #(32) mux3_forwardBE(rd2E,wd3W,alu_resM,forwardBE,sel_rd2E);
-mux2 mux2_aluSrc(.a(sel_rd2E),.b(sign_immE),.sel(alusrcBE),.y(srcB));
+
+mux2 mux2_aluSrc(
+    .a(sel_rd2E),
+    .b(sign_immE),
+    .sel(alusrcBE),
+    .y(srcB)
+    );
 
 alu alu(
     .clk(clk),
@@ -326,19 +335,19 @@ mux2 alu_pc8(
 //);
 
 // ====================================== Memory ======================================
-flopenrc DFF_alu_resM         (clk,rst,clear|(|exceptM),ena,alu_resE_real,alu_resM);
-flopenrc DFF_sel_rd2M         (clk,rst,clear|(|exceptM),ena,sel_rd2E,sel_rd2M);
-flopenrc #(5) DFF_reg_waddrM  (clk,rst,clear|(|exceptM),ena,reg_waddrE,reg_waddrM);
-flopenrc DFF_instrM           (clk,rst,clear|(|exceptM),ena,instrE,instrM);
-flopenrc #(64) DFF_aluout_64M (clk,rst,clear|(|exceptM),ena,aluout_64E,aluout_64M);
-flopenrc DFF_pc_nowM          (clk,rst,clear|(|exceptM),ena,pc_nowE,pc_nowM);
-flopenrc #(8) DFF_exceptM(clk,rst,clear|(|exceptM),ena,{exceptE[7:3],overflow,exceptE[1:0]},exceptM);
-flopenrc #(1) DFF_is_in_delayslotM(clk,rst,clear|(|exceptM),ena,is_in_delayslotE,is_in_delayslotM);
-flopenrc #(5) DFF_reg_rdM  (clk,rst,clear|(|exceptM),ena,rdE,rdM);
+flopenrc DFF_alu_resM         (clk,rst,clear|(|excepttypeM),ena,alu_resE_real,alu_resM);
+flopenrc DFF_sel_rd2M         (clk,rst,clear|(|excepttypeM),ena,sel_rd2E,sel_rd2M);
+flopenrc #(5) DFF_reg_waddrM  (clk,rst,clear|(|excepttypeM),ena,reg_waddrE,reg_waddrM);
+flopenrc DFF_instrM           (clk,rst,clear|(|excepttypeM),ena,instrE,instrM);
+flopenrc #(64) DFF_aluout_64M (clk,rst,clear|(|excepttypeM),ena,aluout_64E,aluout_64M);
+flopenrc DFF_pc_nowM          (clk,rst,clear,ena & ~(|excepttypeM),pc_nowE,pc_nowM);
+flopenrc #(8) DFF_exceptM(clk,rst,clear|(|excepttypeM),ena,{exceptE[7:3],overflow,exceptE[1:0]},exceptM);
+flopenrc #(1) DFF_is_in_delayslotM(clk,rst,clear,ena,is_in_delayslotE,is_in_delayslotM);
+flopenrc #(5) DFF_reg_rdM  (clk,rst,clear|(|excepttypeM),ena,rdE,rdM);
 // ******************* wys??????????????? *****************
 // M???д??hilo
 hilo_reg hilo_reg(
-	.clk(clk),.rst(rst),.we(hilowriteM),
+	.clk(clk),.rst(rst),.we(hilowriteM & ~(|excepttypeM)), // 写的时候没有异常
 	.hilo_i(aluout_64M),
 	// .hilo_res(hilo_res)
 	.hilo(hilo)  // hilo current data
@@ -364,7 +373,15 @@ lsmem lsmen(
     .bad_addr(bad_addr)
 );
 
-exception exp(rst,exceptM,adelM,adesM,status_o,cause_o,excepttypeM);
+exception exp(
+    rst,
+    exceptM,
+    adelM,
+    adesM,
+    status_o,
+    cause_o,
+    excepttypeM
+);
 
 cp0_reg CP0(
     .clk(clk),
@@ -375,7 +392,7 @@ cp0_reg CP0(
 	.raddr_i(rdE),  // E阶段读取CP0，这两步可以避免数据冒险处理
 	.data_i(sel_rd2M),
 
-	.int_i(6'b000000),
+	.int_i(ext_int),
 
 	.excepttype_i(excepttypeM),
 	.current_inst_addr_i(pc_nowM),
@@ -395,10 +412,11 @@ cp0_reg CP0(
 );
 
 // ====================================== WriteBack ======================================
+// BUG 写回阶段应该没有writeback
 flopenrc DFF_alu_resW         (clk,rst,clear,ena,alu_resM,alu_resW);
 flopenrc DFF_data_sram_rdataW (clk,rst,clear,ena,read_dataM,data_sram_rdataW);
 flopenrc #(5) DFF_reg_waddrW  (clk,rst,clear,ena,reg_waddrM,reg_waddrW);
-flopenrc DFF_pc_nowW          (clk,rst,clear,ena,pc_nowM,pc_nowW);
+flopenrc DFF_pc_nowW          (clk,rst,clear,ena & ~(|excepttypeM),pc_nowM,pc_nowW);
 
 
 mux2 mux2_memtoReg(.a(alu_resW),.b(data_sram_rdataW),.sel(memtoRegW),.y(wd3W));

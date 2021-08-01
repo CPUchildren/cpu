@@ -49,14 +49,21 @@ module alu(
                y <= a + b; 
                overflow <= (a[31] == b[31]) & (y[31] != a[31]);
             end
-            `ALUOP_ADDU  : y <= a + b;
+            `ALUOP_ADDU  : begin
+                y <= a + b;
+            end
             `ALUOP_ADDI  : begin
                 y <= a + b;
                 overflow <= (a[31] == b[31]) & (y[31] != a[31]);
             end
             `ALUOP_ADDIU : y <= a + b;
-            `ALUOP_SUB   : y <= a - b;
-            `ALUOP_SUBU  : y <= a - b;
+            `ALUOP_SUB   : begin 
+                y <= a - b;
+                overflow <= (a[31]^b[31]) & (y[31]==b[31]);
+            end
+            `ALUOP_SUBU  : begin 
+                y <= a - b;
+            end
             // TODO 这里是不是可以只用一个aluop
             `ALUOP_SLT   : y <= $signed(a) < $signed(b);
             `ALUOP_SLTU  : y <= a < b;

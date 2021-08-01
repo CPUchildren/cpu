@@ -138,7 +138,7 @@ wire [31:0] conf_rdata;
 mycpu_top cpu(
     .clk              (cpu_clk   ),
     .resetn           (cpu_resetn),  //low active
-    .ext_int          (6'd0      ),  //interrupt,high active
+    .ext_int          (6'b000000 ),  //interrupt,high active
 
     .inst_sram_en     (cpu_inst_en   ),
     .inst_sram_wen    (cpu_inst_wen  ),
