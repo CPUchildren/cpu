@@ -75,7 +75,7 @@ module i_cache_direct_map (
     wire read_finish;   //数据接收成功(data_ok)，即读请求结束
     always @(posedge clk) begin
         addr_rcv <= rst ? 1'b0 :
-                    cache_inst_req & cache_inst_addr_ok ? 1'b1 : // // XXX 对于cache握手机制，更正
+                    cache_inst_req & cache_inst_addr_ok ? 1'b1 :
                     read_finish ? 1'b0 : addr_rcv;
     end
     assign read_req = state==RM;
