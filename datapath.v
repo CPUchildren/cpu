@@ -96,7 +96,7 @@ pc_mux pc_mux(
     .pc_next(pc_next)
 );
 
-// XXX 这里的excepttypeM不是很懂？
+// XXX 这里为什么是excepttypeM？
 pc_reg pc_reg(
     .clk(clk),
     .rst(rst),
@@ -145,6 +145,7 @@ main_dec main_dec(
     .funct(functD),
     .rs(rsD),
     .rt(rtD),
+    
     .regwriteW(regwriteW),
     .regdstE(regdstE),
     .alusrcAE(alusrcAE),
@@ -182,10 +183,9 @@ alu_dec alu_decoder(
     .aluopE(alucontrolE)
 );
 
-// TODO M阶段准备好数据，W阶段写回
 regfile regfile(
 	.clk(clk),
-	.we3(regwriteM & ~stallW & !except_logicM), // BUG_DONE
+	.we3(regwriteM & ~stallW & !except_logicM), // 数据在M阶段准备，W阶段写回
 	.ra1(instrD[25:21]), 
     .ra2(instrD[20:16]),
     .wa3(reg_waddrM),
@@ -378,7 +378,7 @@ cp0_reg CP0(
 mux2 mux2_memtoReg(.a(alu_resM),.b(read_dataM),.sel(memtoRegM),.y(wd3M));
 
 // ====================================== WriteBack ======================================
-// BUG 这里应该flushW吗？sram是都可以
+// W阶段异常刷新
 flopenrc #(5 ) DFF_reg_waddrW      (clk,rst,flushW,~stallW,reg_waddrM,reg_waddrW);
 flopenrc #(32) DFF_wd3W            (clk,rst,flushW,~stallW,wd3M,wd3W);
 

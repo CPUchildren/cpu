@@ -1,5 +1,5 @@
 module d_cache_write_through (
-    input wire clk, rst, no_cache,flush,
+    input wire clk,rst,except,no_cache,
     //mips core
     input         cpu_data_req     ,
     input         cpu_data_wr      ,
@@ -20,17 +20,17 @@ module d_cache_write_through (
     input          cache_data_addr_ok ,
     input          cache_data_data_ok 
 );
-    //CacheÈÖçÁΩÆ
+    //Cache≈‰÷√
     parameter  INDEX_WIDTH  = 10, OFFSET_WIDTH = 2;
     localparam TAG_WIDTH    = 32 - INDEX_WIDTH - OFFSET_WIDTH;
     localparam CACHE_DEEPTH = 1 << INDEX_WIDTH;
     
-    //CacheÂ≠òÂÇ®ÂçïÂÖÉ
+    //Cache¥Ê¥¢µ•‘™
     reg                 cache_valid [CACHE_DEEPTH - 1 : 0];
     reg [TAG_WIDTH-1:0] cache_tag   [CACHE_DEEPTH - 1 : 0];
     reg [31:0]          cache_block [CACHE_DEEPTH - 1 : 0];
 
-    //ËÆøÈóÆÂú∞ÂùÄÂàÜËß£
+    //∑√Œ µÿ÷∑∑÷Ω‚
     wire [OFFSET_WIDTH-1:0] offset;
     wire [INDEX_WIDTH-1:0] index;
     wire [TAG_WIDTH-1:0] tag;
@@ -39,7 +39,7 @@ module d_cache_write_through (
     assign index = cpu_data_addr[INDEX_WIDTH + OFFSET_WIDTH - 1 : OFFSET_WIDTH];
     assign tag = cpu_data_addr[31 : INDEX_WIDTH + OFFSET_WIDTH];
 
-    //ËÆøÈóÆCache line
+    //∑√Œ Cache line
     wire c_valid;
     wire [TAG_WIDTH-1:0] c_tag;
     wire [31:0] c_block;
@@ -48,12 +48,12 @@ module d_cache_write_through (
     assign c_tag   = cache_tag  [index];
     assign c_block = cache_block[index];
 
-    //Âà§Êñ≠ÊòØÂê¶ÂëΩ‰∏≠
+    //≈–∂œ «∑Ò√¸÷–
     wire hit, miss;
-    assign hit = ~no_cache & (c_valid & (c_tag == tag)) & cpu_data_req;  //cache lineÁöÑvalid‰Ωç‰∏∫1Ôºå‰∏îtag‰∏éÂú∞ÂùÄ‰∏≠tagÁõ∏Á≠â
+    assign hit = ~no_cache & cpu_data_req & c_valid & (c_tag == tag); //cache lineµƒvalidŒªŒ™1£¨«“tag”Îµÿ÷∑÷–tagœ‡µ»
     assign miss = cpu_data_req & (~hit);
 
-    //ËØªÊàñÂÜô
+    //∂¡ªÚ–¥
     wire read, write;
     assign write = cpu_data_wr;
     assign read = ~write;
@@ -67,20 +67,20 @@ module d_cache_write_through (
         end
         else begin
             case(state)
-                IDLE:   state <= cpu_data_req & read & miss & (~flush)? RM :
+                IDLE:   state <= cpu_data_req & read & miss & (~except)? RM :
                                  cpu_data_req & read & hit  ? IDLE :
-                                 cpu_data_req & write & (~flush) ? WM : IDLE;
+                                 cpu_data_req & write & (~except) ? WM : IDLE;
                 RM:     state <= read & cache_data_data_ok ? IDLE : RM;
                 WM:     state <= write & cache_data_data_ok ? IDLE : WM;
             endcase
         end
     end
 
-    //ËØªÂÜÖÂ≠ò
-    //ÂèòÈáèread_req, addr_rcv, read_finishÁî®‰∫éÊûÑÈÄ†Á±ªsram‰ø°Âè∑„ÄÇ
-    wire read_req;      //‰∏ÄÊ¨°ÂÆåÊï¥ÁöÑËØª‰∫ãÂä°Ôºå‰ªéÂèëÂá∫ËØªËØ∑Ê±ÇÂà∞ÁªìÊùü
-    reg addr_rcv;       //Âú∞ÂùÄÊé•Êî∂ÊàêÂäü(addr_ok)ÂêéÂà∞ÁªìÊùü
-    wire read_finish;   //Êï∞ÊçÆÊé•Êî∂ÊàêÂäü(data_ok)ÔºåÂç≥ËØªËØ∑Ê±ÇÁªìÊùü
+    //∂¡ƒ⁄¥Ê
+    //±‰¡øread_req, addr_rcv, read_finish”√”⁄ππ‘Ï¿‡sram–≈∫≈°£
+    wire read_req;      //“ª¥ŒÕÍ’˚µƒ∂¡ ¬ŒÒ£¨¥”∑¢≥ˆ∂¡«Î«ÛµΩΩ· ¯
+    reg addr_rcv;       //µÿ÷∑Ω” ’≥…π¶(addr_ok)∫ÛµΩΩ· ¯
+    wire read_finish;   // ˝æ›Ω” ’≥…π¶(data_ok)£¨º¥∂¡«Î«ÛΩ· ¯
     always @(posedge clk) begin
         addr_rcv <= rst ? 1'b0 :
                     read & cache_data_req & cache_data_addr_ok ? 1'b1 :
@@ -89,7 +89,7 @@ module d_cache_write_through (
     assign read_req = state==RM;
     assign read_finish = read & cache_data_data_ok;
 
-    //ÂÜôÂÜÖÂ≠ò
+    //–¥ƒ⁄¥Ê
     wire write_req;     
     reg waddr_rcv;      
     wire write_finish;   
@@ -113,8 +113,8 @@ module d_cache_write_through (
     assign cache_data_addr  = cpu_data_addr;
     assign cache_data_wdata = cpu_data_wdata;
 
-    //ÂÜôÂÖ•Cache
-    //‰øùÂ≠òÂú∞ÂùÄ‰∏≠ÁöÑtag, indexÔºåÈò≤Ê≠¢addrÂèëÁîüÊîπÂèò
+    //–¥»ÎCache
+    //±£¥Êµÿ÷∑÷–µƒtag, index£¨∑¿÷πaddr∑¢…˙∏ƒ±‰
     reg [TAG_WIDTH-1:0] tag_save;
     reg [INDEX_WIDTH-1:0] index_save;
     always @(posedge clk) begin
@@ -127,14 +127,14 @@ module d_cache_write_through (
     wire [31:0] write_cache_data;
     wire [3:0] write_mask;
 
-    //Ê†πÊçÆÂú∞ÂùÄ‰Ωé‰∏§‰ΩçÂíåsizeÔºåÁîüÊàêÂÜôÊé©Á†ÅÔºàÈíàÂØπsbÔºåshÁ≠â‰∏çÊòØÂÜôÂÆåÊï¥‰∏Ä‰∏™Â≠óÁöÑÊåá‰ª§ÔºâÔºå4‰ΩçÂØπÂ∫î1‰∏™Â≠óÔºà4Â≠óËäÇÔºâ‰∏≠ÊØè‰∏™Â≠óÁöÑÂÜô‰ΩøËÉΩ
+    //∏˘æ›µÿ÷∑µÕ¡ΩŒª∫Õsize£¨…˙≥…–¥—⁄¬Î£®’Î∂‘sb£¨shµ»≤ª «–¥ÕÍ’˚“ª∏ˆ◊÷µƒ÷∏¡Ó£©£¨4Œª∂‘”¶1∏ˆ◊÷£®4◊÷Ω⁄£©÷–√ø∏ˆ◊÷µƒ–¥ πƒ‹
     assign write_mask = cpu_data_size==2'b00 ?
                             (cpu_data_addr[1] ? (cpu_data_addr[0] ? 4'b1000 : 4'b0100):
                                                 (cpu_data_addr[0] ? 4'b0010 : 4'b0001)) :
                             (cpu_data_size==2'b01 ? (cpu_data_addr[1] ? 4'b1100 : 4'b0011) : 4'b1111);
 
-    //Êé©Á†ÅÁöÑ‰ΩøÁî®Ôºö‰Ωç‰∏∫1ÁöÑ‰ª£Ë°®ÈúÄË¶ÅÊõ¥Êñ∞ÁöÑ„ÄÇ
-    //‰ΩçÊãìÂ±ïÔºö{8{1'b1}} -> 8'b11111111
+    //—⁄¬Îµƒ π”√£∫ŒªŒ™1µƒ¥˙±Ì–Ë“™∏¸–¬µƒ°£
+    //ŒªÕÿ’π£∫{8{1'b1}} -> 8'b11111111
     //new_data = old_data & ~mask | write_data & mask
     assign write_cache_data = cache_block[index] & ~{{8{write_mask[3]}}, {8{write_mask[2]}}, {8{write_mask[1]}}, {8{write_mask[0]}}} | 
                               cpu_data_wdata & {{8{write_mask[3]}}, {8{write_mask[2]}}, {8{write_mask[1]}}, {8{write_mask[0]}}};
@@ -142,20 +142,20 @@ module d_cache_write_through (
     integer t;
     always @(posedge clk) begin
         if(rst) begin
-            for(t=0; t<CACHE_DEEPTH; t=t+1) begin   //ÂàöÂºÄÂßãÂ∞ÜCacheÁΩÆ‰∏∫Êó†Êïà
+            for(t=0; t<CACHE_DEEPTH; t=t+1) begin   //∏’ø™ ºΩ´Cache÷√Œ™Œﬁ–ß
                 cache_valid[t] <= 0;
             end
         end
         else begin
-            if(read_finish) begin //ËØªÁº∫Â§±ÔºåËÆøÂ≠òÁªìÊùüÊó∂
-                cache_valid[index_save] <= 1'b1;             //Â∞ÜCache lineÁΩÆ‰∏∫ÊúâÊïà
+            if(read_finish) begin //∂¡»± ß£¨∑√¥ÊΩ· ¯ ±
+                cache_valid[index_save] <= 1'b1;             //Ω´Cache line÷√Œ™”––ß
                 cache_tag  [index_save] <= tag_save;
-                cache_block[index_save] <= cache_data_rdata; //ÂÜôÂÖ•Cache line
+                cache_block[index_save] <= cache_data_rdata; //–¥»ÎCache line
             end
-            else if(write & cpu_data_req & hit) begin   //ÂÜôÂëΩ‰∏≠Êó∂ÈúÄË¶ÅÂÜôCache
-                cache_block[index] <= write_cache_data;      //ÂÜôÂÖ•Cache lineÔºå‰ΩøÁî®indexËÄå‰∏çÊòØindex_save
+            else if(write & cpu_data_req & hit) begin   //–¥√¸÷– ±–Ë“™–¥Cache
+                cache_block[index] <= write_cache_data;      //–¥»ÎCache line£¨ π”√index∂¯≤ª «index_save
             end
-            // else if(write & cpu_data_req & miss)  // ÂÜôÁº∫Â§±
+            // else if(write & cpu_data_req & miss)  // –¥»± ß
         end
     end
 endmodule

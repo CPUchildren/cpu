@@ -50,7 +50,7 @@ module hazard (
     assign flushD = except_logicM;
     assign flushE = except_logicM | ((lwstall | branch_stall | jr_stall)  & ~i_stall & ~d_stall);  
     assign flushM = except_logicM;
-    assign flushW = except_logicM; // BUG_DONE 写回要刷新
+    assign flushW = except_logicM; // flushW=异常刷新
 
     always @(*) begin
         case (excepttypeM)

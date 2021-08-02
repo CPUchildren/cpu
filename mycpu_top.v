@@ -52,23 +52,41 @@ module mycpu_top(
     output [31:0] debug_wb_rf_wdata
 );
 
-    // variable define
+// variable define
     // inst sram
     wire        inst_sram_en   ;
     wire [3 :0] inst_sram_wen  ;
     wire [31:0] inst_sram_addr ;
     wire [31:0] inst_sram_wdata;
     wire [31:0] inst_sram_rdata;
+    // data sram
+    wire        data_sram_en   ;
+    wire [3 :0] data_sram_wen  ;
+    wire [31:0] data_sram_addr ;
+    wire [31:0] data_sram_wdata;
+    wire [31:0] data_sram_rdata;
+    
     // inst sram like
-    wire        inst_req       ;
-    wire        inst_wr        ;
-    wire [1 :0] inst_size      ;
-    wire [31:0] inst_addr      ;
-    wire [31:0] inst_wdata     ;
-    wire [31:0] inst_rdata     ;
-    wire        inst_addr_ok   ;
-    wire        inst_data_ok   ;
+    wire        inst_req    ;
+    wire        inst_wr     ;
+    wire [1 :0] inst_size   ;
+    wire [31:0] inst_addr   ;
+    wire [31:0] inst_wdata  ;
+    wire [31:0] inst_rdata  ;
+    wire        inst_addr_ok;
+    wire        inst_data_ok;
+    // data sram like
+    wire        data_req    ;
+    wire        data_wr     ;
+    wire [1 :0] data_size   ;
+    wire [31:0] data_addr   ;
+    wire [31:0] data_wdata  ;
+    wire [31:0] data_rdata  ;
+    wire        data_addr_ok;
+    wire        data_data_ok;
+
     // inst cache
+    wire        no_inst_cache     ;
     wire        cache_inst_req    ;
     wire        cache_inst_wr     ;
     wire [1 :0] cache_inst_size   ;
@@ -77,46 +95,27 @@ module mycpu_top(
     wire [31:0] cache_inst_rdata  ;
     wire        cache_inst_addr_ok;
     wire        cache_inst_data_ok;
-    // data sram
-    wire        data_sram_en   ;
-    wire [3 :0] data_sram_wen  ;
-    wire [31:0] data_sram_addr ;
-    wire [31:0] data_sram_wdata;
-    wire [31:0] data_sram_rdata;
-    // data sram like
-    wire        data_req       ;
-    wire        data_wr        ;
-    wire [1 :0] data_size      ;
-    wire [31:0] data_addr      ;
-    wire [31:0] data_wdata     ;
-    wire [31:0] data_rdata     ;
-    wire        data_addr_ok   ;
-    wire        data_data_ok   ;
     // data cache
-    wire        no_cache           ;
-    wire        cache_data_req     ;
-    wire        cache_data_wr      ;
-    wire [1 :0] cache_data_size    ;
-    wire [31:0] cache_data_addr    ;
-    wire [31:0] cache_data_wdata   ;
-    wire [31:0] cache_data_rdata   ;
-    wire        cache_data_addr_ok ;
-    wire        cache_data_data_ok ;
+    wire        no_data_cache     ;
+    wire        cache_data_req    ;
+    wire        cache_data_wr     ;
+    wire [1 :0] cache_data_size   ;
+    wire [31:0] cache_data_addr   ;
+    wire [31:0] cache_data_wdata  ;
+    wire [31:0] cache_data_rdata  ;
+    wire        cache_data_addr_ok;
+    wire        cache_data_data_ok;
     // datapath
-    wire except; // ,memwrite
+    wire except;
     wire longest_stall,i_stall,d_stall;
-    // wire [3:0]sel;
-    wire [31:0] instrF; // , pc, aluout, writedata, readdata;
-    wire [31:0] data_sram_addr_temp;
+    wire [31:0] instrF,data_sram_addr_temp,inst_sram_addr_temp;
     
-    // variable assignment
+
+// variable assignment
     // instr
-    // assign inst_sram_en = 1'b1;   //如果有inst_en，就用inst_en
     assign inst_sram_wen = 4'b0;
-    // assign inst_sram_addr = pc;
     assign inst_sram_wdata = 32'b0;
     assign instrF = inst_sram_rdata;
-    
     
     // debug
     assign debug_wb_pc          = datapath.pc_nowM;
@@ -124,39 +123,42 @@ module mycpu_top(
     assign debug_wb_rf_wnum     = datapath.regfile.wa3;
     assign debug_wb_rf_wdata    = datapath.regfile.wd3;
 
+
 // sub module
-// 地址映射+no_cache判断
+    // 地址映射+no_cache判断
     tlb tlb(
+        .inst_sram_addr_temp(inst_sram_addr_temp),
+        .no_inst_cache(no_inst_cache),
+        .inst_sram_addr(inst_sram_addr),
+
         .data_sram_addr_temp(data_sram_addr_temp),
-        .no_cache(no_data_cache),
+        .no_data_cache(no_data_cache),
         .data_sram_addr(data_sram_addr)
     );
 
+    // cpu master
     datapath datapath(
 		.clk(aclk),
         .rst(~aresetn), // to high active
-        // signals
         .i_stall(i_stall), // input
         .d_stall(d_stall), // input
         .longest_stall(longest_stall), // output
-        
         // instr
-        .pc_nowF(inst_sram_addr),
+        .pc_nowF(inst_sram_addr_temp),
         .inst_sram_rdataF(inst_sram_rdata),
         .inst_sram_enF(inst_sram_en),
         // data
         .data_sram_enM(data_sram_en),
-        // .memWriteM(memwrite),
         .data_sram_wenM(data_sram_wen),
         .data_sram_waddrM(data_sram_addr_temp),
         .data_sram_wdataM(data_sram_wdata),
         .data_sram_rdataM(data_sram_rdata),
-
         // except
         .ext_int(ext_int),
         .except_logicM(except)
 	);
 
+    // data: cpu --> sramlike
     d_sramlike_interface dsramlike_interface(
         .clk(aclk),
         .rst(~aresetn),
@@ -180,7 +182,7 @@ module mycpu_top(
         .data_addr_ok (data_addr_ok ),
         .data_data_ok (data_data_ok )
     );
-
+    // inst: cpu --> sramlike
     i_sramlike_interface isramlike_interface(
         .clk(aclk),
         .rst(~aresetn),
@@ -204,10 +206,13 @@ module mycpu_top(
         .inst_addr_ok (inst_addr_ok ),
         .inst_data_ok (inst_data_ok )
     );
+
+    // inst: sramlike --> cache(sramlike)
     i_cache_direct_map  i_cache(
         .clk(aclk),    
         .rst(~aresetn),
-        .flush(except),
+        .except(except),
+        .no_cache(no_inst_cache),
         //mips core
         .cpu_inst_req     (inst_req     ),
         .cpu_inst_wr      (inst_wr      ),
@@ -228,11 +233,12 @@ module mycpu_top(
         .cache_inst_addr_ok(cache_inst_addr_ok),
         .cache_inst_data_ok(cache_inst_data_ok)
     );
+    // data: sramlike --> cache(sramlike)
     d_cache_write_through d_cache(
         .clk(aclk),    
         .rst(~aresetn),
-        .no_cache(no_cache),
-        .flush(except),
+        .except(except),
+        .no_cache(no_data_cache),
         // mips core 
         .cpu_data_req    (data_req     ),
         .cpu_data_wr     (data_wr      ),
@@ -253,10 +259,11 @@ module mycpu_top(
         .cache_data_addr_ok(cache_data_addr_ok),
         .cache_data_data_ok(cache_data_data_ok)
     );
+
+    // cache(sramlike) --> axi(interface)
     cpu_axi_interface cpu_axi_interface(
         .clk(aclk),
         .resetn(aresetn),  // 注意，cpu_axi_interface的rst信号,low active
-        .flush(except),
         //inst sram-like 
         .inst_req     (cache_inst_req    ), // cache_inst_req    
         .inst_wr      (cache_inst_wr     ), // cache_inst_wr     
@@ -321,7 +328,7 @@ module mycpu_top(
         .bready       (bready       )
     );
 
-    //ascii
+    // ascii
     instdec instdec(
         .instr(instrF)
     );
