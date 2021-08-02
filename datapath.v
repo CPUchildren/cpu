@@ -332,7 +332,7 @@ exception exp(
 );
 
 hilo_reg hilo_reg(
-	.clk(clk),.rst(rst),.we(hilowriteM & ~(|excepttypeM)), // 写的时候没有异常
+	.clk(clk),.rst(rst),.we(hilowriteM & ~(|excepttypeM)  & (~stallM)), // 写的时候没有异常，无阻塞
 	.hilo_i(aluout_64M),
 	// .hilo_res(hilo_res)
 	.hilo(hilo)  // hilo current data
@@ -375,12 +375,6 @@ flopenrc #(32) DFF_pc_nowW         (clk,rst,clear,~stallW & ~(|excepttypeM),pc_n
 mux2 mux2_memtoReg(.a(alu_resW),.b(data_sram_rdataW),.sel(memtoRegW),.y(wd3W));
 
 // ******************* 冒险处理 *****************
-// wire [31:0]excepttypeM_save;
-// always @(posedge clk) begin
-//     if(rst) excepttypeM_save <= 32'b0;
-//     else excepttypeM_save <= excepttypeM;
-// end
-
 hazard hazard(
     .regwriteE(regwriteE),
     .regwriteM(regwriteM),
@@ -421,7 +415,6 @@ hazard hazard(
     // 异常
     .opM(instrM[31:26]),
     .excepttypeM(excepttypeM),
-    // .excepttypeM_save(excepttypeM_save),
     .cp0_epcM(epc_o),
     .newpcM(newpcM)
 );

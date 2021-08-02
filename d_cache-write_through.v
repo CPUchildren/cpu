@@ -1,5 +1,5 @@
 module d_cache_write_through (
-    input wire clk, rst, no_cache,
+    input wire clk, rst, no_cache,flush,
     //mips core
     input         cpu_data_req     ,
     input         cpu_data_wr      ,
@@ -67,9 +67,9 @@ module d_cache_write_through (
         end
         else begin
             case(state)
-                IDLE:   state <= cpu_data_req & read & miss ? RM :
+                IDLE:   state <= cpu_data_req & read & miss & (~flush)? RM :
                                  cpu_data_req & read & hit  ? IDLE :
-                                 cpu_data_req & write       ? WM : IDLE;
+                                 cpu_data_req & write & (~flush) ? WM : IDLE;
                 RM:     state <= read & cache_data_data_ok ? IDLE : RM;
                 WM:     state <= write & cache_data_data_ok ? IDLE : WM;
             endcase

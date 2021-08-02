@@ -239,6 +239,7 @@ module mycpu_top(
         .clk(aclk),    
         .rst(~aresetn),
         .no_cache(no_cache),
+        .flush(|(excepttypeM)),
         // mips core 
         .cpu_data_req    (data_req     ),
         .cpu_data_wr     (data_wr      ),

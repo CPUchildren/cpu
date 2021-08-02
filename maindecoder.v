@@ -136,7 +136,7 @@ module main_dec(
     end
    
     flopenrc #(14) dff1E(clk,rst,flushE,~stallE,signsD,signsE);
-    flopenrc #(14) dff1M(clk,rst,clear ,~stallM,signsE,signsM);
+    flopenrc #(14) dff1M(clk,rst,flushM,~stallM,signsE,signsM);
     flopenrc #(14) dff1W(clk,rst,clear ,~stallW,signsM,signsW);
     
 endmodule
