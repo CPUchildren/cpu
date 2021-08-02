@@ -1,24 +1,4 @@
 `timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 2017/11/02 14:20:09
-// Design Name: 
-// Module Name: regfile
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
-
 
 module regfile(
 	input wire clk,
@@ -30,9 +10,9 @@ module regfile(
 
 	reg [31:0] rf[31:0];
 
-	always @(negedge clk) begin
-	// XXX axi接口统一使用posedge
+	// FIXME axi接口统一使用posedge
 	// always @(posedge clk) begin 
+	always @(negedge clk) begin
 		if(we3) begin
 			rf[wa3] <= wd3;
 		end

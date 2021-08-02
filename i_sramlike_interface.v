@@ -42,11 +42,6 @@ module i_sramlike_interface (
                      inst_req & inst_addr_ok & ~inst_data_ok ? 1'b1 : // ÅĞ¶ÏË³Ğò£ºÏÈreq£¬ÔÙaddr_ok£¬ÔÙdata_ok
                      inst_data_ok ? 1'b0 :
                      addr_succ;
-        // BUG display addr_succ_refs
-        // $display("inst_req    :%b",inst_req);
-        // $display("inst_addr_ok:%b",inst_addr_ok);
-        // $display("inst_data_ok:%b",inst_data_ok);
-        // $display("addr_succ   :%b",addr_succ);
     end
 
     // do_finish

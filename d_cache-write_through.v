@@ -51,7 +51,7 @@ module d_cache_write_through (
     //判断是否命中
     wire hit, miss;
     assign hit = ~no_cache & (c_valid & (c_tag == tag)) & cpu_data_req;  //cache line的valid位为1，且tag与地址中tag相等
-    assign miss = ~hit;
+    assign miss = cpu_data_req & (~hit);
 
     //读或写
     wire read, write;

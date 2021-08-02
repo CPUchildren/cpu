@@ -119,6 +119,13 @@
 `define OP_SPECIAL_INST 6'b010000
 `define RS_MTC0 5'b00100
 `define RS_MFC0 5'b00000
+`define EXE_TYPE_INT =  32'h00000001
+`define EXC_TYPE_ADEL = 32'h00000004
+`define EXC_TYPE_ADES = 32'h00000005
+`define EXC_TYPE_SYS =  32'h00000008
+`define EXC_TYPE_BP =   32'h00000009
+`define EXC_TYPE_RI =   32'h0000000a
+`define EXC_TYPE_OV =   32'h0000000c
 // `define EXE_TEQ    6'b110100
 // `define EXE_TEQI   5'b01100
 // `define EXE_TGE    6'b110000

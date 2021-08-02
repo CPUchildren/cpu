@@ -1,5 +1,4 @@
 `timescale 1ns/1ps
-// PC模块，一个D触发器
 module pc (
     input wire clk,rst,ena,
     input wire[31:0]din,

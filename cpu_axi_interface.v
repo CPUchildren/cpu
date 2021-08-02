@@ -33,9 +33,9 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 module cpu_axi_interface
 (
-    input         clk,
+    input         clk   ,
     input         resetn, 
-
+    input         flush ,
     //inst sram-like 
     input         inst_req     ,
     input         inst_wr      ,
@@ -102,7 +102,8 @@ module cpu_axi_interface
 //addr
 reg do_req;
 reg do_req_or; //req is inst or data;1:data,0:inst
-reg        do_wr_r;
+reg do_wr_r;
+reg flush_reg;
 reg [1 :0] do_size_r;
 reg [31:0] do_addr_r;
 reg [31:0] do_wdata_r;
@@ -110,6 +111,10 @@ wire data_back;
 
 assign inst_addr_ok = !do_req && !data_req;
 assign data_addr_ok = !do_req;
+always @(posedge clk) begin
+    flush_reg  <= !resetn ? 1'b0:
+                   flush  ? 1'b1:1'b0; 
+end
 always @(posedge clk) begin
     do_req     <= !resetn                       ? 1'b0 : 
                   (inst_req||data_req)&&!do_req ? 1'b1 :
@@ -156,7 +161,7 @@ assign arburst = 2'd0;
 assign arlock  = 2'd0;
 assign arcache = 4'd0;
 assign arprot  = 3'd0;
-assign arvalid = do_req&&!do_wr_r&&!addr_rcv;
+assign arvalid = do_req&&!do_wr_r&&!addr_rcv; 
 //r
 assign rready  = 1'b1;
 

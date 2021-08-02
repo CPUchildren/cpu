@@ -106,8 +106,8 @@ module mycpu_top(
     wire memen; // ,memwrite
     wire longest_stall,i_stall,d_stall;
     // wire [3:0]sel;
-    wire [31:0] instr; // , pc, aluout, writedata, readdata;
-    wire [31:0] data_sram_addr_temp;
+    wire [31:0] instrF,instrD,instrE,instrM; // , pc, aluout, writedata, readdata;
+    wire [31:0] data_sram_addr_temp,excepttypeM;
     
     // variable assignment
     // instr
@@ -115,7 +115,7 @@ module mycpu_top(
     assign inst_sram_wen = 4'b0;
     // assign inst_sram_addr = pc;
     assign inst_sram_wdata = 32'b0;
-    assign instr = inst_sram_rdata;
+    assign instrF = inst_sram_rdata;
     
     // data
     assign data_sram_en = memen;     //如果有data_en，就用data_en
@@ -148,7 +148,7 @@ module mycpu_top(
         
         // instr
         .pc_now(inst_sram_addr),
-        .instrF(instr),
+        .instrF(inst_sram_rdata),
         
         // data
         .memenM(memen),
@@ -156,7 +156,12 @@ module mycpu_top(
         .data_sram_wenM(data_sram_wen),
         .data_sram_waddr(data_sram_addr_temp),
         .data_sram_wdataM(data_sram_wdata),
-        .data_sram_rdataM(data_sram_rdata)
+        .data_sram_rdataM(data_sram_rdata),
+
+        // except
+        .ext_int(ext_int),
+        .excepttypeM(excepttypeM),
+        .instrD(instrD),.instrE(instrE),.instrM(instrM)
 	);
 
     d_sramlike_interface dsramlike_interface(
@@ -209,6 +214,7 @@ module mycpu_top(
     i_cache_direct_map  i_cache(
         .clk(aclk),    
         .rst(~aresetn),
+        .flush(|(excepttypeM)),
         //mips core
         .cpu_inst_req     (inst_req     ),
         .cpu_inst_wr      (inst_wr      ),
@@ -256,7 +262,7 @@ module mycpu_top(
     cpu_axi_interface cpu_axi_interface(
         .clk(aclk),
         .resetn(aresetn),  // 注意，cpu_axi_interface的rst信号,low active
-
+        .flush(|excepttypeM),
         //inst sram-like 
         .inst_req     (cache_inst_req    ), // cache_inst_req    
         .inst_wr      (cache_inst_wr     ), // cache_inst_wr     
@@ -322,8 +328,17 @@ module mycpu_top(
     );
 
     //ascii
-    instdec instdec(
-        .instr(instr)
+    instdec instdecF(
+        .instr(instrF)
+    );
+    instdec instdecD(
+        .instr(instrD)
+    );
+    instdec instdecE(
+        .instr(instrE)
+    );
+    instdec instdecM(
+        .instr(instrM)
     );
 
 endmodule

@@ -1,5 +1,5 @@
 module i_cache_direct_map (
-    input wire clk, rst,
+    input wire clk, rst,flush,
     //mips core
     input         cpu_inst_req     ,
     input         cpu_inst_wr      ,
@@ -50,8 +50,8 @@ module i_cache_direct_map (
 
     //判断是否命中
     wire hit, miss;
-    assign hit = c_valid & (c_tag == tag);  //cache line的valid位为1，且tag与地址中tag相等
-    assign miss = ~hit;
+    assign hit = cpu_inst_req & c_valid & (c_tag == tag);  //cache line的valid位为1，且tag与地址中tag相等
+    assign miss = cpu_inst_req & (~hit);
 
     //FSM
     parameter IDLE = 2'b00, RM = 2'b01; // i cache只有read
@@ -62,7 +62,7 @@ module i_cache_direct_map (
         end
         else begin
             case(state)
-                IDLE:   state <= cpu_inst_req & miss ? RM : IDLE;
+                IDLE:   state <= cpu_inst_req & miss & !flush ? RM : IDLE;
                 RM:     state <= cache_inst_data_ok ? IDLE : RM;
             endcase
         end
@@ -75,7 +75,7 @@ module i_cache_direct_map (
     wire read_finish;   //数据接收成功(data_ok)，即读请求结束
     always @(posedge clk) begin
         addr_rcv <= rst ? 1'b0 :
-                    cache_inst_req & cache_inst_addr_ok ? 1'b1 :
+                    cache_inst_req & cache_inst_addr_ok ? 1'b1 : // // XXX 对于cache握手机制，更正
                     read_finish ? 1'b0 : addr_rcv;
     end
     assign read_req = state==RM;
@@ -87,7 +87,7 @@ module i_cache_direct_map (
     assign cpu_inst_data_ok = cpu_inst_req & hit | cache_inst_data_ok;
 
     //output to axi interface
-    assign cache_inst_req   = read_req & ~addr_rcv;
+    assign cache_inst_req   = (state==RM) & ~addr_rcv;
     assign cache_inst_wr    = cpu_inst_wr;
     assign cache_inst_size  = cpu_inst_size;
     assign cache_inst_addr  = cpu_inst_addr;
