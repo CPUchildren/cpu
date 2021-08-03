@@ -91,7 +91,7 @@ module i_cache_2way (
     assign cpu_inst_data_ok = cpu_inst_req & hit | cache_inst_data_ok;
 
     //output to axi interface
-    assign cache_inst_req   = (state==RM) & ~addr_rcv;
+    assign cache_inst_req   = read_req & ~addr_rcv;
     assign cache_inst_wr    = cpu_inst_wr;
     assign cache_inst_size  = cpu_inst_size;
     assign cache_inst_addr  = cpu_inst_addr;
@@ -129,6 +129,10 @@ module i_cache_2way (
                 cache_tag  [!c_lastused_save][index_save] <= tag_save;
                 cache_block[!c_lastused_save][index_save] <= cache_inst_rdata; //写入Cache line
                 cache_lastused[index_save] <= !c_lastused_save;
+            end 
+            else if(cpu_inst_req & hit & !no_cache) begin
+                // $display("读命中"); 更新lastused
+                cache_lastused[index] <= c_currused;
             end
         end
     end

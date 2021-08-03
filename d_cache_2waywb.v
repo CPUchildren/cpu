@@ -208,6 +208,10 @@ module d_cache_2waywb (
                 cache_dirty[!c_lastused_save][index_save] <= 1'b0;
                 cache_lastused[index_save] <= !c_lastused_save;
             end
+            else if(read & cpu_data_req & hit & !no_cache) begin
+                // $display("读命中"); 更新lastused
+                cache_lastused[index] <= c_currused;
+            end
             else if(write & cpu_data_req & hit & !no_cache) begin   // 写命中时需要写Cache
                 // $display("写命中"); 直接写
                 cache_block[c_currused][index] <= write_cache_data;             // 写入Cache line，使用index而不是index_save
