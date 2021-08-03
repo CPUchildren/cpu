@@ -37,6 +37,8 @@
  			prid_o <= 32'b00000000010011000000000100000010;
  			timer_int_o <= `InterruptNotAssert;
  		end else begin
+			//  TODO 两周期加一次，改法建议：两个计数器，辅寄存器每隔1clk加一次，每当其尾位为0，
+			// 则主寄存器count_o加1
  			count_o <= count_o + 1;
 			cause_o[15:10] <= int_i;
  			if(compare_o != `ZeroWord && count_o == compare_o) begin
