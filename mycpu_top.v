@@ -234,7 +234,7 @@ module mycpu_top(
         .cache_inst_data_ok(cache_inst_data_ok)
     );
     // data: sramlike --> cache(sramlike)
-    d_cache_write_through d_cache(
+    d_cache_wb d_cache(
         .clk(aclk),    
         .rst(~aresetn),
         .except(except),

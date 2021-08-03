@@ -314,7 +314,7 @@ flopenrc #(64) DFF_aluout_64M      (clk,rst,flushM,~stallM,aluout_64E,aluout_64M
 // µÿ÷∑”≥…‰
 // assign data_sram_waddrM = alu_resM;
 assign data_sram_waddrM = (alu_resM[31:28] == 4'hB) ? {4'h1, alu_resM[27:0]} :
-                (alu_resM[31:28] == 4'h8) ? {4'h0, alu_resM[27:0]}: 32'b0;
+                (alu_resM[31:28] == 4'h8) ? {4'h0, alu_resM[27:0]}: alu_resM;
 
 lsmem lsmen(
     .opM(instrM[31:26]),

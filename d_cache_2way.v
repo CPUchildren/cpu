@@ -146,11 +146,11 @@ module d_cache_2way (
     end
 
     wire [31:0] write_cache_data;
-    wire [3 :0] write_mask;
-    wire [31:0] mask_data;
+    wire [3 :0] write_mask4;
+    wire [31:0] write_mask32;
 
     //根据地址低两位和size，生成写掩码（针对sb，sh等不是写完整一个字的指令），4位对应1个字（4字节）中每个字的写使能
-    assign write_mask = cpu_data_size==2'b00 ?
+    assign write_mask4 = cpu_data_size==2'b00 ?
                             cpu_data_addr[1] ? (cpu_data_addr[0] ? 4'b1000 : 4'b0100) :  // 00->11,10
                                                (cpu_data_addr[0] ? 4'b0010 : 4'b0001) :  // 00->01,00
                         cpu_data_size==2'b01 ? (cpu_data_addr[1] ? 4'b1100 : 4'b0011) :  // 01->10,00
@@ -158,8 +158,8 @@ module d_cache_2way (
 
     //掩码的使用：位为1的代表需要更新的。
     //位拓展：{8{1'b1}} -> 8'b11111111
-    assign mask_data = { {8{write_mask[3]}}, {8{write_mask[2]}}, {8{write_mask[1]}}, {8{write_mask[0]}} };
-    assign write_cache_data = cache_block[c_way][index] & ~mask_data | cpu_data_wdata & mask_data; // 默认原数据，有写请求再写入读到的数据
+    assign write_mask32 = { {8{write_mask4[3]}}, {8{write_mask4[2]}}, {8{write_mask4[1]}}, {8{write_mask4[0]}} };
+    assign write_cache_data = cache_block[c_way][index] & ~write_mask32 | cpu_data_wdata & write_mask32; // 默认原数据，有写请求再写入读到的数据
 
 // Cache内部数据维护，标记位实现替换算法
     integer t1;
