@@ -26,8 +26,8 @@ module mycpu_top(
     assign d_stall = 1'b0;
     // cpu master
     datapath datapath(
-		.clk(aclk),
-        .rst(~aresetn), // to high active
+		.clk(~clk),
+        .rst(~resetn), // to high active
         .i_stall(i_stall), // input
         .d_stall(d_stall), // input
         .longest_stall(), // output
