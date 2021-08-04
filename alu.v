@@ -3,20 +3,21 @@
 
 module alu(
     input  wire clk,rst,
-    input  wire div_ready, 
-    input  wire [1:0] state_div,
     input  wire [7:0]aluop,
     input  wire [31:0]a,
     input  wire [31:0]b,
     input  wire [31:0]cp0_data_o,
     input  wire  [63:0]hilo, // hilo source data
 
-    output reg start_div,signed_div,stall_div,
+    output reg stall_div,
     output reg [31:0] y,
     output wire [63:0]aluout_64,
     output reg overflow,
     output wire zero
     );
+    
+    wire div_ready;
+    reg start_div,signed_div;
     reg [63:0] temp_aluout_64;
     wire [31:0] multa,multb;
     wire [63:0] div_result;
@@ -29,7 +30,9 @@ module alu(
 
     always @(*) begin
         stall_div<= 1'b0;
-        overflow <= 0;
+        overflow <= 1'b0;
+        start_div <= `DivStop;
+        signed_div <=1'b0;
         case (aluop)
             //ËãÊõÖ¸Áî
             `ALUOP_ADD   : begin
@@ -85,11 +88,7 @@ module alu(
                     start_div <= `DivStop;
                     signed_div <=1'b1;
                     stall_div <=1'b0;
-                end else begin
-                    start_div <= `DivStop;
-                    signed_div <=1'b0;
-                    stall_div <=1'b0;
-                end
+                end 
             end
             `ALUOP_DIVU :begin
                 if(div_ready ==1'b0) begin
@@ -141,7 +140,6 @@ module alu(
         .opdata1_i(a),
         .opdata2_i(b),
         
-        .state(state_div),
         .start_i(start_div),
         .annul_i(1'b0),
         .result_o(div_result),
