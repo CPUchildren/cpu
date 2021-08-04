@@ -21,7 +21,7 @@
 
 `timescale 1ns / 1ps
 
-`include "defines2.vh"
+`include "defines.vh"
 
 
 module instdec(

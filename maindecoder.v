@@ -8,7 +8,7 @@ module main_dec(
     input  wire [4:0] rs,rt,
     output wire regwriteW,regdstE,alusrcAE,alusrcBE,branchD,memWriteM,memtoRegW,
     output wire regwriteE,regwriteM,memtoRegE,memtoRegM,hilowriteM,cp0writeM,
-    output wire jumpD,balD,balE,balW,jalD,jalE,jalW,jrD,jrE,jrW,memenM,
+    output wire jumpD,balD,balE,balW,jalD,jalE,jalW,jrD,jrE,memenM,
     output reg invalid
 );
     // Decoder
@@ -38,7 +38,6 @@ module main_dec(
     assign jalW=signsW[8];
     assign jrD=signsD[9];
     assign jrE=signsE[9];
-    assign jrW=signsW[9];
     assign memenM=signsM[13];
 
     assign ena   = 1'b1;
@@ -131,7 +130,10 @@ module main_dec(
                     `RS_MTC0: signsD <= 14'b01000000000000;
                     default : signsD <= 14'b00000000000000;
                 endcase
-            default: invalid <= 1'b1;
+            default: begin
+                invalid <= 1'b1;
+                signsD <= 14'b00000000000000;
+            end
         endcase
     end
    

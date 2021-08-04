@@ -10,5 +10,6 @@ module pc (
     always @(posedge clk) begin
         if(rst) dout <= 32'hbfc00000;
         else if(ena) dout <= din;
+        else dout <= dout;
     end
 endmodule

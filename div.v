@@ -10,20 +10,21 @@ module div(
     input wire[31:0] opdata1_i,
     input wire[31:0] opdata2_i,
 
-    output reg[1 :0] state,
     output reg[63:0] result_o,
     output reg ready_o
 );
 
 wire[32:0] div_temp;
+wire[31:0] temp_op1,temp_op2;
+reg[1:0] state;
 reg[5:0] cnt;
 reg[64:0] dividend;
 reg[31:0] divisor;	 
-reg[31:0] temp_op1;
-reg[31:0] temp_op2;
 reg sign1,sign2;
 
 assign div_temp = {1'b0,dividend[63:32]} - {1'b0,divisor};
+assign temp_op1= (signed_div_i == 1'b1 && opdata1_i[31] == 1'b1) ? (~opdata1_i + 1):opdata1_i;
+assign temp_op2= (signed_div_i == 1'b1 && opdata2_i[31] == 1'b1) ? (~opdata2_i + 1):opdata2_i;
 
 always @ (posedge clk) begin
     if (rst == `RstEnable) begin
@@ -32,6 +33,7 @@ always @ (posedge clk) begin
         result_o <= {`ZeroWord,`ZeroWord};
         sign1 <= 1'b0;
         sign2 <= 1'b0;
+        cnt <= 6'b000000;
     end else begin
         case (state)
             `DivFree: begin
@@ -42,17 +44,17 @@ always @ (posedge clk) begin
                         state <= `DivOn;
                         cnt <= 6'b000000;
                         if(signed_div_i == 1'b1 && opdata1_i[31] == 1'b1 ) begin
-                            temp_op1 = ~opdata1_i + 1;
+                            // temp_op1 = ~opdata1_i + 1;
                             sign1 <= opdata1_i[31];
                         end else begin
-                            temp_op1 = opdata1_i;
+                            // temp_op1 = opdata1_i;
                             sign1 <= 1'b0;
                         end
                         if(signed_div_i == 1'b1 && opdata2_i[31] == 1'b1 ) begin
-                            temp_op2 = ~opdata2_i + 1;
+                            // temp_op2 = ~opdata2_i + 1;
                             sign2 <= opdata2_i[31];
                         end else begin
-                            temp_op2 = opdata2_i;
+                            // temp_op2 = opdata2_i;
                             sign2 <= 1'b0;
                         end
                         dividend <= {`ZeroWord,`ZeroWord};

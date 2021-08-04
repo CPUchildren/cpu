@@ -47,7 +47,7 @@ module mycpu_top(
 	);
 
     // instr
-    assign inst_sram_wen = 4'b0;
+    assign inst_sram_wen = 1'b0;
     assign inst_sram_wdata = 32'b0;
 
     // debug
