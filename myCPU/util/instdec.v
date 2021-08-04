@@ -114,7 +114,7 @@ module instdec(
                     ascii<="ERET";
                 end else begin 
                     case (instr[25:21])
-                        5'b00100: ascii<="MTOC0";
+                        5'b00100: ascii<="MTC0";
                         5'b00000: ascii<="MFC0";
                     endcase
                 end

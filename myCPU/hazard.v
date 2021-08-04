@@ -1,14 +1,21 @@
 `timescale 1ns/1ps
 module hazard (
-    input wire pcsrcD,jumpD,jalD,
-    input wire regwriteE,regwriteM,regwriteW,memtoRegE,memtoRegM,branchD,jrD,stall_divE,
-    input wire [4:0]rsD,rtD,rsE,rtE,reg_waddrM,reg_waddrW,reg_waddrE,
-    output wire stallF,stallD,stallE,
-    output wire flushD,flushE,flushM,flushW,pc_flushE,
+    input wire regwriteE,regwriteM,regwriteW,
+    input wire memtoRegE,memtoRegM,
+    input wire pcsrcD,jumpD,jalD,branchD,jrD,
+    input wire stall_divE,i_stall,d_stall,
+    input wire [4:0]rsD,rtD,rsE,rtE,
+    input wire [4:0]reg_waddrM,reg_waddrW,reg_waddrE,
+    
     output wire forwardAD,forwardBD,
-    output wire[1:0] forwardAE, forwardBE,
+    output wire [1:0] forwardAE, forwardBE,
+    output wire stallF,stallD,stallE,stallM,stallW,longest_stall,
+    output wire flushD,flushE,flushM,flushW,
+    
 
+    // Òì³£
     input wire [5:0] opM,
+    input wire except_logicM,
     input wire [31:0] excepttypeM,
     input wire [31:0] cp0_epcM,
     output reg [31:0] newpcM
@@ -33,27 +40,28 @@ module hazard (
                             (branchD & memtoRegM & ((rsD == reg_waddrM)|(rtD == reg_waddrM)));  // Ð´»Ø½×¶Î×èÈû
     assign jr_stall =(jrD & regwriteE & ((rsD == reg_waddrE)|(rtD == reg_waddrE))) | 
                     (jrD & memtoRegM & ((rsD == reg_waddrM)|(rtD == reg_waddrM))); 
-    assign stallF = lwstall | branch_stall | jr_stall | stall_divE;
-    assign stallD = lwstall | branch_stall | jr_stall | stall_divE;
-    assign stallE = stall_divE;
+    assign longest_stall = stall_divE | i_stall | d_stall;
+    assign stallF = longest_stall | lwstall | branch_stall | jr_stall;
+    assign stallD = longest_stall | lwstall | branch_stall | jr_stall;
+    assign stallE = longest_stall;
+    assign stallM = longest_stall; 
+    assign stallW = longest_stall;
 
-    // Ë¢ÐÂ
-    assign flushD = (|excepttypeM);
-    assign flushE = lwstall | branch_stall | jr_stall | (|excepttypeM);
-    assign flushM = (|excepttypeM);
-    assign pc_flushE = lwstall | branch_stall | jr_stall;
-    assign flushW = (|excepttypeM);
+    assign flushD = except_logicM;
+    assign flushE = except_logicM | ((lwstall | branch_stall | jr_stall)  & ~i_stall & ~d_stall);  
+    assign flushM = except_logicM;
+    assign flushW = except_logicM; // flushW=Òì³£Ë¢ÐÂ
 
     always @(*) begin
-        if(excepttypeM != 32'b0) begin
-            case (excepttypeM)
-                32'h00000001,32'h00000004,32'h00000005,32'h00000008,
-                32'h00000009,32'h0000000a,32'h0000000c,32'h0000000d: begin
-                    newpcM <= 32'hBFC00380;
-                end
-                32'h0000000e: newpcM <= cp0_epcM;
-                default     : newpcM <= 32'hBFC00380;
-            endcase
-        end
+        case (excepttypeM)
+            32'h00000001,32'h00000004,32'h00000005,32'h00000008,
+            32'h00000009,32'h0000000a,32'h0000000c,32'h0000000d: begin
+                newpcM <= 32'hBFC00380;
+            end
+            32'h0000000e: newpcM <= cp0_epcM;
+            default     : newpcM <= 32'hBFC00380;
+        endcase
     end
+
+    
 endmodule

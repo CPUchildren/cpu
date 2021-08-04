@@ -10,7 +10,9 @@ module regfile(
 
 	reg [31:0] rf[31:0];
 
-	always @(negedge clk) begin
+	// FIXME axi接口统一使用posedge
+	always @(posedge clk) begin 
+	// always @(negedge clk) begin
 		if(we3) begin
 			rf[wa3] <= wd3;
 		end

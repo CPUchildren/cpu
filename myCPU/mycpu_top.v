@@ -21,62 +21,44 @@ module mycpu_top(
     output [31:0] debug_wb_rf_wdata
 );
 
-    // �?�?例�??
-	// wire [31:0] pc;
-	wire [31:0] instr,instrD,instrE,instrM;
-	// wire memwrite;
-    // wire [3:0]sel;
-	// wire [31:0] aluout, writedata, readdata;
-    
+    wire i_stall,d_stall;
+    assign i_stall = 1'b0;
+    assign d_stall = 1'b0;
+    // cpu master
     datapath datapath(
-		.clk(~clk),
-        .rst(~resetn), // to high active
+		.clk(aclk),
+        .rst(~aresetn), // to high active
+        .i_stall(i_stall), // input
+        .d_stall(d_stall), // input
+        .longest_stall(), // output
         // instr
-        .pc_now(inst_sram_addr),
-        .instrF(inst_sram_rdata),
+        .pc_nowF(inst_sram_addr),
+        .inst_sram_rdataF(inst_sram_rdata),
+        .inst_sram_enF(inst_sram_en),
         // data
-        // .memWriteM(memwrite),
-        .data_sram_rdataM(data_sram_rdata),
-        .data_sram_waddr(data_sram_addr),
-        .data_sram_wdataM(data_sram_wdata),
+        .data_sram_enM(data_sram_en),
         .data_sram_wenM(data_sram_wen),
+        .data_sram_waddrM(data_sram_addr),
+        .data_sram_wdataM(data_sram_wdata),
+        .data_sram_rdataM(data_sram_rdata),
         // except
         .ext_int(ext_int),
-        .instrD(instrD),.instrE(instrE),.instrM(instrM)
+        .except_logicM()
 	);
 
     // instr
-    assign inst_sram_en = 1'b1;     //如果有inst_en，就用inst_en
     assign inst_sram_wen = 4'b0;
     assign inst_sram_wdata = 32'b0;
-    // assign inst_sram_addr = pc;
-    assign instr = inst_sram_rdata;
-
-    assign data_sram_en = 1'b1;     //如果有data_en，就用data_en
-    // assign data_sram_wen = {4{memwrite}};
-    // assign data_sram_wen = sel;
-    // assign data_sram_addr = aluout;
-    // assign data_sram_wdata = writedata;
-    // assign readdata = data_sram_rdata;
 
     // debug
-    assign debug_wb_pc          = datapath.pc_nowW;
-    assign debug_wb_rf_wen      = {4{datapath.regwriteW}}; 
-    assign debug_wb_rf_wnum     = datapath.reg_waddrW;
-    assign debug_wb_rf_wdata    = datapath.wd3W;
+    assign debug_wb_pc          = datapath.pc_nowM;
+    assign debug_wb_rf_wen      = {4{datapath.regfile.we3}};
+    assign debug_wb_rf_wnum     = datapath.regfile.wa3;
+    assign debug_wb_rf_wdata    = datapath.regfile.wd3;
 
     //ascii
-    instdec instdecF(
-        .instr(instr)
-    );
-    instdec instdecD(
-        .instr(instrD)
-    );
-    instdec instdecE(
-        .instr(instrE)
-    );
-    instdec instdecM(
-        .instr(instrM)
+    instdec instdec(
+        .instr(inst_sram_rdata)
     );
 
 endmodule
